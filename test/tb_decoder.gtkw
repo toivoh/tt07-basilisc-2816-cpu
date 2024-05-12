@@ -1,0 +1,134 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Fri May 10 13:49:04 2024
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/tt-repo/cpu-test/tt/src/tb_decoder.vcd"
+[dumpfile_mtime] "Fri May 10 13:41:55 2024"
+[dumpfile_size] 9774372
+[savefile] "/home/toivo/code/tinytapeout/tt-repo/cpu-test/tt/src/tb_decoder.gtkw"
+[timestart] 0
+[size] 2064 1143
+[pos] -1 -1
+*-23.000000 359910000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_decoder.
+[treeopen] tb_decoder.dec.
+[treeopen] tb_decoder.dec.sched.
+[sst_width] 297
+[signals_width] 246
+[sst_expanded] 1
+[sst_vpaned_height] 349
+@28
+tb_decoder.reset
+tb_decoder.clk
+@200
+-
+-
+@22
+tb_decoder.imm_data[15:0]
+@28
+tb_decoder.imm_data_in[1:0]
+tb_decoder.next_imm_data
+@200
+-
+@22
+tb_decoder.r0[7:0]
+tb_decoder.r1[7:0]
+tb_decoder.r2[7:0]
+tb_decoder.r3[7:0]
+tb_decoder.r4[7:0]
+tb_decoder.r5[7:0]
+tb_decoder.r6[7:0]
+tb_decoder.r7[7:0]
+@200
+-
+@28
+tb_decoder.dec.sched.alu.op_valid
+tb_decoder.dec.sched.alu.op_done
+tb_decoder.dec.sched.inst_valid
+tb_decoder.dec.sched.inst_done
+@200
+-
+@28
+tb_decoder.dec.sched.alu.reg1[2:0]
+tb_decoder.dec.sched.alu.reg2[2:0]
+@200
+-
+-Decoder
+@28
+tb_decoder.dec.mdz[2:0]
+@200
+-
+@28
+tb_decoder.dec.arg2_src[2:0]
+tb_decoder.dec.arg2_reg[2:0]
+@200
+-
+@28
+tb_decoder.dec.addr_op
+tb_decoder.dec.addr_reg1[2:0]
+tb_decoder.dec.addr_reg2[2:0]
+tb_decoder.dec.addr_wide2
+@200
+-
+@28
+tb_decoder.dec.src_sext2
+@200
+-
+@28
+tb_decoder.dec.op[2:0]
+tb_decoder.dec.aaa[2:0]
+@200
+-
+-
+@28
+tb_decoder.dec.cls[2:0]
+@200
+-Scheduler
+@28
+tb_decoder.dec.sched.src[2:0]
+tb_decoder.dec.sched.need_addr
+@200
+-
+@28
+tb_decoder.dec.sched.addr_lsb
+tb_decoder.dec.sched.wait_for_2nd_mem_half
+@200
+-
+@28
+tb_decoder.dec.sched.send_command
+tb_decoder.dec.sched.send_read
+tb_decoder.dec.sched.send_write
+tb_decoder.dec.sched.tx_data_next
+@200
+-
+@28
+tb_decoder.dec.sched.wait_for_mem
+tb_decoder.dec.sched.rx_data_valid
+@200
+-
+@28
+tb_decoder.dec.sched.active
+@200
+-
+@28
+tb_decoder.dec.sched.external_arg2
+@200
+-
+-ALU
+@28
+tb_decoder.dec.sched.alu.operation[2:0]
+tb_decoder.dec.sched.alu.arg2_0[1:0]
+tb_decoder.dec.sched.alu.arg2[1:0]
+tb_decoder.dec.sched.alu.arg2_s[1:0]
+tb_decoder.dec.sched.alu.result[1:0]
+tb_decoder.dec.sched.alu.scan_in[1:0]
+tb_decoder.dec.sched.alu.arg2_6bit
+@200
+-
+@28
+tb_decoder.dec.sched.alu.flag_c
+tb_decoder.dec.sched.alu.flag_s
+@29
+tb_decoder.dec.sched.alu.flag_z
+[pattern_trace] 1
+[pattern_trace] 0

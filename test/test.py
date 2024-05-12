@@ -1,40 +1,274 @@
-# SPDX-FileCopyrightText: © 2024 Tiny Tapeout
+# SPDX-FileCopyrightText: © 2024 Toivo Henningsson
 # SPDX-License-Identifier: MIT
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import RisingEdge, FallingEdge, Timer, ClockCycles
+from random import randrange, getrandbits, choice
+
+from ram_emulator import *
+from isa import *
+
+
+#@cocotb.test()
+async def test_cpu0(dut):
+	dut._log.info("start")
+	clock = Clock(dut.clk, 2, units="us")
+	cocotb.start_soon(clock.start())
+
+	preserved = True
+	top = dut.top
+	cpu = top.cpu
+	try:
+		decoder = cpu.dec
+	except AttributeError:
+		preserved = False
+
+	if preserved:
+		sched = decoder.sched
+		alu = sched.alu
+		regfile = alu.registers
+		regs = regfile.regs
+
+		#for i in range(NREGS): regs[i].value = i**2
+
+	# reset
+	dut._log.info("reset")
+	dut.rst_n.value = 0
+	dut.ui_in.value = 0
+	await ClockCycles(dut.clk, 10)
+	dut.rst_n.value = 1
+	await ClockCycles(dut.clk, 1) # Seems to be needed to start the RAM emulator at the first start bit
+
+	if preserved:
+		mem = [0 for i in range(32768)]
+		pc = 1
+
+		# Sequence of instructions to make a prefetch be ongoing when the PC read starts
+		inst = Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, 0)); mem[pc] = inst.encode(); pc += 1
+		inst = Binop(BinopNum.SUB, ArgMemR16PlusImm2(True, 0, 0), ArgReg(True, 0)); mem[pc] = inst.encode(); pc += 1
+		inst = Binop(BinopNum.MOV, ArgReg(False, 0), ArgReg(False, 0)); mem[pc] = inst.encode(); pc += 1
+		# PC read
+		#inst = Binop(BinopNum.MOV, ArgReg(True, 0), ArgPCPlusImm8(True, -128)); mem[pc] = inst.encode(); pc += 1
+		# Branch
+		inst = Branch(4+1, cc=dut.CC_Z.value); mem[pc] = inst.encode(); pc += 1
+		for i in range(4): mem[pc] = 256+i; pc += 1
+		# Untaken branch
+		inst = Branch(4+1, cc=dut.CC_NZ.value); mem[pc] = inst.encode(); pc += 1
+
+		for i in range(4):
+			inst = Binop(BinopNum.MOV, ArgReg(True, 2*i), ArgImm8(True, ~i))
+			mem[pc] = inst.encode(); pc += 1
+		inst = Binop(BinopNum.MOV, ArgReg(False, 3), ArgImm8(False, 0xfd - 256))
+		mem[pc] = inst.encode(); pc += 1
+		inst = Binop(BinopNum.MOV, ArgReg(True, 0), ArgMemR16PlusImm2(True, 2, 0))
+		mem[pc] = inst.encode(); pc += 1
+		mem[0xfdfe>>1] = 0xa5e4
+		#inst = Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 2, 6), ArgReg(True, 2))
+		inst = Binop(BinopNum.ADD, ArgMemR16PlusImm2(True, 2, 6), ArgReg(True, 2))
+		mem[pc] = inst.encode(); pc += 1
+		mem[0xfe04>>1] = 0x100 - 0x002
+		inst = Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 2, 4), ArgReg(True, 2))
+		mem[pc] = inst.encode(); pc += 1
+		for i in range(2, 8):
+			inst = Binop(BinopNum.MOV, ArgReg(False, i), ArgImm8(False, i**2))
+			mem[pc] = inst.encode(); pc += 1
+		#for i in range(pc): print("mem[", i ,"] = ", hex(mem[i]))
+
+		ram_emu = RAMEmulator(mem, delay=13)
+
+
+		for i in range(8*pc + 14*16):
+			#tx, tx_fetch = dut.tx_pins.value.integer, dut.tx_fetch.value.integer
+			uo_out = dut.uo_out.value.integer
+			tx = uo_out & 3
+			tx_fetch = (uo_out >> 2) & 1
+
+			#print("tx = ", tx)
+			rx = ram_emu.step(tx)
+			#dut.rx_pins.value = rx
+			dut.ui_in.value = rx
+
+			await ClockCycles(dut.clk, 1)
+
+	else:
+		await ClockCycles(dut.clk, 1)
 
 
 @cocotb.test()
-async def test_project(dut):
-    dut._log.info("Start")
+async def test_cpu(dut):
+	dut._log.info("start")
+	clock = Clock(dut.clk, 2, units="us")
+	cocotb.start_soon(clock.start())
 
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, units="us")
-    cocotb.start_soon(clock.start())
+	preserved = True
+	try:
+		top = dut.top
+		cpu = top.cpu
+		decoder = cpu.dec
+	except AttributeError:
+		preserved = False
 
-    # Reset
-    dut._log.info("Reset")
-    dut.ena.value = 1
-    dut.ui_in.value = 0
-    dut.uio_in.value = 0
-    dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
+	if preserved:
+		sched = decoder.sched
+		alu = sched.alu
+		regfile = alu.registers
+		regs = regfile.regs
 
-    dut._log.info("Test project behavior")
+		#for i in range(NREGS): regs[i].value = i**2
 
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
+	# reset
+	dut._log.info("reset")
+	dut.rst_n.value = 0
+	dut.ui_in.value = 0
+	await ClockCycles(dut.clk, 10)
+	dut.rst_n.value = 1
 
-    # Wait for one clock cycle to see the output values
-    await ClockCycles(dut.clk, 1)
+	state = State()
+	for i in range(0, NREGS, 2): state.set_reg(i, randrange(0x10000), True)
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+	pos = 0
+	instructions = []
+	pcs = []
+	last_addr = None
+	num_flushed = 0
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+	def exec(inst):
+		pcs.append(state.pc)
+		inst.execute(state)
+		instructions.append(inst.encode())
+
+	def get_next_inst(header, addr):
+		nonlocal pos, last_addr, num_flushed
+		assert header == TX_HEADER_READ_16 # Check that the fetch is a 16 bit read
+
+		#print((pos, addr, pcs[pos], hex(instructions[pos])))
+
+		if addr != pcs[pos]:
+			last_addr = (last_addr + 2) & 0xffff
+			assert addr == last_addr
+			num_flushed += 1
+			assert num_flushed < 4 # Depends on prefetch queue size
+			return (RX_SB_READ_16, 0)
+
+		num_flushed = 0
+
+		assert addr == pcs[pos] # Check that we get the expected address.
+		inst = instructions[pos]
+		#pos += 1
+		if pos < len(instructions): pos += 1
+		last_addr = addr
+		return (RX_SB_READ_16, inst)
+
+	ram_emu = MockRAMEmulator(delay=1, alt_responder=get_next_inst)
+	state.ram_emu = ram_emu
+
+	min_jump = 4
+
+	#for i in range(8):
+	#	exec(Binop(BinopNum.MOV, ArgReg(False, i), ArgImm8(False, state.get_reg(i))))
+	#exec(Binop(BinopNum.SUB, ArgMemR16PlusR8(False, 2, 7), ArgReg(False, 5))) # Test instruction
+
+	# Test byte compare (sub) plus branch
+	# TODO: Test the conditional branches more directly
+	for cc in [dut.CC_ALWAYS.value, dut.CC_Z.value, dut.CC_NZ.value, dut.CC_S.value, dut.CC_NS.value, dut.CC_C.value, dut.CC_NC.value, dut.CC_A.value, dut.CC_NA.value, dut.CC_V.value, dut.CC_NV.value, dut.CC_G.value, dut.CC_NG.value]:
+		for j in range(-1,2):
+			for i in range(-1,2):
+				r = [0, randrange(1,32), randrange(-32, 0)]
+				si, sj = [r[i], r[j]]
+				exec(Binop(BinopNum.MOV, ArgReg(False, 0), ArgImm8(False, r[i])))
+				exec(Binop(BinopNum.SUB, ArgReg(False, 0), ArgImm6(False, r[j])))
+
+				ui = si & 255
+				uj = sj & 255
+				res = (ui - uj) & 255
+
+				if cc == dut.CC_ALWAYS.value: taken = True
+				elif cc == dut.CC_Z.value: taken = ui == uj
+				elif cc == dut.CC_NZ.value: taken = ui != uj
+				elif cc == dut.CC_S.value:  taken = (res & 128) != 0
+				elif cc == dut.CC_NS.value: taken = (res & 128) == 0
+				elif cc == dut.CC_C.value:  taken = ui >= uj
+				elif cc == dut.CC_NC.value: taken = ui <  uj
+				elif cc == dut.CC_A.value:  taken = ui >  uj
+				elif cc == dut.CC_NA.value: taken = ui <= uj
+				elif cc == dut.CC_V.value:  taken = si >= sj
+				elif cc == dut.CC_NV.value: taken = si <  sj
+				elif cc == dut.CC_G.value:  taken = si >  sj
+				elif cc == dut.CC_NG.value: taken = si <= sj
+				else: assert False # unknown condition code
+
+				offset = randrange(-128, 128 - min_jump)
+				if offset >= 0: offset += min_jump
+				#taken = (not taken) or cc == 0
+				exec(Branch(offset, cc=cc, taken=taken))
+
+	n_tests = 500
+
+	# Reinitialize to random register values
+	for i in range(0, NREGS): exec(Binop(BinopNum.MOV, ArgReg(False, i), ArgImm8(False, randrange(255))))
+
+	for iter in range(n_tests):
+		if randrange(16) == 0:
+			# Avoid jumping with offset = 0
+			# and small positive offsets since it will confuse the prefetch flush detection logic
+			offset = randrange(-128, 128 - min_jump)
+			if offset >= 0: offset += min_jump
+			inst = Branch(offset)
+			print("Branch ", inst.offset)
+		else:
+			wide = randbool()
+			# TODO: Test CMP, TEST
+			#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+			if opnum != BinopNum.MOV and randrange(4) == 0: # mov r, imm6 has no encoding; use mov r, imm8 instead
+				arg1, arg2 = rand_arg_reg(wide), rand_arg_imm6(wide)
+			elif opnum == BinopNum.MOV and randbool(): # mov r, imm8 -- choose imm8 more often since it covers more of the encoding space
+				arg1, arg2 = rand_arg_reg(wide), rand_arg_imm8(wide)
+			else:
+				if randbool(): arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True)
+				else:          arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
+
+			inst = Binop(opnum, arg1, arg2)
+
+		#inst = Binop(BinopNum.SUB, ArgMemR16PlusR8(True, 2, 7), ArgReg(True, 4))
+		#inst = Binop(BinopNum.SUB, ArgMemR16PlusR8(False, 2, 7), ArgReg(False, 4))
+
+		# Test instruction
+		print("Test:\t", end="")
+		exec(inst)
+
+		# Read out the state so that the MockRAMEmulator will check it
+		for i in range(2):
+			exec(Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 4*i, 0), ArgReg(True, 4*i+2)))
+		# TODO: read out flags so that we can test the values
+
+		# Randomize one register value
+		exec(Binop(BinopNum.MOV, ArgReg(False, iter & 7), ArgImm8(False, randrange(255))))
+#	else:
+#		n_tests = 7
+#		for i in range(n_tests):
+#			exec(Branch(8*(i+1)))
+
+
+	#print("pcs = ", pcs)
+
+	for i in range(128*n_tests):
+		#tx, tx_fetch = dut.tx_pins.value.integer, dut.tx_fetch.value.integer
+		uo_out = dut.uo_out.value.integer
+		tx = uo_out & 3
+		tx_fetch = (uo_out >> 2) & 1
+
+		#print("tx = ", tx)
+		rx = ram_emu.step(tx, alt=tx_fetch)
+		#dut.rx_pins.value = rx
+		dut.ui_in.value = rx
+
+		if pos == len(instructions):
+			print("Reached last instruction in", i, "cycles")
+			break
+
+		await ClockCycles(dut.clk, 1)
+
+	print("pos =", pos)
+	assert pos == len(instructions) # Check that we had time to fetch all instructions
