@@ -1,0 +1,192 @@
+/*
+ * Copyright (c) 2024 Toivo Henningsson
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+`default_nettype none
+
+`include "common.vh"
+
+module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
+		input wire clk, reset,
+
+		// Raised on last cycle of op: Must get a new op on next cycle or get op_valid = 0
+		output wire op_done,
+
+		// Once op_valid has become 1, it and the operation parameters must remain stable until op_done is raised
+		input wire op_valid,
+		input wire [OP_BITS-1:0] operation, // which operation to perform, according to what?
+		input wire external_arg1, external_arg2, // if true, arg1/arg2 is taken from data_in, otherwise from regfile[reg2]
+		input wire pair_op, pair_op2, sext2, // sign/zero extend if pair_op && !pair_op2
+		input wire [2:0] arg2_limit_length,
+		input wire [LOG2_NR-1:0] reg1, reg2,
+		input wire update_reg1, reverse_args, double_arg2,
+		input wire output_scan_out,
+		input wire update_carry_flags, update_other_flags,
+
+		output wire active, // When high, data in shifted on data_in and data_out (if used by the operation)
+		input wire [NSHIFT-1:0] data_in1, data_in2,
+		output wire [NSHIFT-1:0] data_out,
+
+		output reg flag_c, flag_v, flag_s, flag_z,
+
+		output wire [$clog2(2*REG_BITS / NSHIFT)-1:0] counter
+	);
+	wire arg2_7bit;
+	wire arg2_6bit;
+	wire arg2_2bit;
+	assign {arg2_7bit, arg2_6bit, arg2_2bit} = arg2_limit_length;
+
+	localparam NUM_STATES = 2*REG_BITS / NSHIFT; // must divide evenly
+	localparam STATE_BITS = $clog2(NUM_STATES);
+
+	localparam NUM_STATES_PAIR = NUM_STATES;
+	localparam STATE_BITS_PAIR = STATE_BITS;
+
+	localparam NUM_STATES_SINGLE = REG_BITS / NSHIFT; // must divide evenly
+	localparam STATE_BITS_SINGLE = $clog2(NUM_STATES_SINGLE);
+
+
+	localparam OP_ADD = `OP_ADD;
+	localparam OP_SUB = `OP_SUB;
+	localparam OP_ADC = `OP_ADC;
+	localparam OP_SBC = `OP_SBC;
+	localparam OP_AND = `OP_AND;
+	localparam OP_OR  = `OP_OR;
+	localparam OP_XOR = `OP_XOR;
+	localparam OP_MOV = `OP_MOV;
+
+
+	assign active = op_valid;
+
+	reg [STATE_BITS-1:0] state; // Counts through the steps of an operation
+	wire [STATE_BITS+1-1:0] inc_state = state + active;
+	wire last_op_cycle = pair_op ? inc_state[STATE_BITS_PAIR] : inc_state[STATE_BITS_SINGLE];
+	wire [STATE_BITS-1:0] next_state = last_op_cycle ? 0 : inc_state[STATE_BITS-1:0];
+
+	wire second = state[STATE_BITS_PAIR-1]; // are we on the second byte in the pair?
+	assign counter = state;
+
+	//reg flag_c, flag_v, flag_s, flag_z;
+
+
+	assign op_done = last_op_cycle;
+
+	always @(posedge clk) begin
+		if (reset) begin
+			state <= 0;
+		end else begin
+			state <= next_state;
+		end
+	end
+
+	wire [LOG2_NR-1:0] reg_index, reg_index2;
+	wire [NSHIFT-1:0] scan_in, scan_in2, scan_out, scan_out2;
+
+	wire block_carry = !operation[`OP_BIT_WCARRY]; // Set to zero for adc
+	wire do_sub = operation[`OP_BIT_SUB];
+
+	// Is the operation using just one register operand?
+	//wire single_reg = (operation == OP_MOV) || external_arg2;
+	wire single_reg = external_arg2;
+	assign scan_in2 = scan_out2;
+
+	wire do_scan  = op_valid;
+	wire do_scan2 = op_valid && !single_reg;
+
+	wire [NSHIFT-1:0] arg1, arg2_0, arg2;
+	//assign arg1 = scan_out;
+	assign arg1 = external_arg1 ? data_in1 : scan_out;
+	assign arg2_0 = external_arg2 ? data_in2 : scan_out2;
+
+	// Highest bit of arg2 seen so far. Sign extension will preserve it once the valid input bits have passed.
+	reg sign2;
+
+	// Zero/sign extend arg2?
+	 // Assumes REG_BITS=8, NSHIFT=2
+	wire extend_arg2 = (second && !pair_op2) || (arg2_6bit && state == 3) || (arg2_2bit && state != 0);
+	wire [NSHIFT-1:0] arg2_01 = extend_arg2 ? ((sext2 && sign2) ? '1 : '0) : ((arg2_7bit && state == 3) ? arg2_0 & 2'b01 : arg2_0);
+
+	reg old_arg2_bit; // CONSIDER: Is this the same as sign2?
+	assign arg2 = double_arg2 ? {arg2_01[NSHIFT-1-1:0], (state == 0) ? 1'b0 : old_arg2_bit} : arg2_01;
+	always @(posedge clk) old_arg2_bit <= arg2_01[NSHIFT-1];
+
+	reg carry;
+	//wire carry_in = (state == 0 && block_carry) ? do_sub : carry;
+	wire carry_in = (state == 0) ? (block_carry ? do_sub : flag_c) : carry;
+
+	// If more ALU operations become asymmetric than `OP_SUB, handle these too! Or swap arg1 and arg2. Swapping them instead. Example: MOV is asymmetric
+	//wire invert_arg1 = do_sub && reverse_args;
+	//wire invert_arg2 = do_sub && !reverse_args;
+	wire invert_arg2 = do_sub;
+
+	wire [NSHIFT-1:0] arg1_s = reverse_args ? arg2 : arg1;
+	wire [NSHIFT-1:0] arg2_s = reverse_args ? arg1 : arg2;
+
+	//wire [NSHIFT+1-1:0] sum = (arg1 ^ (invert_arg1 ? {NSHIFT{1'b1}} : '0)) + (arg2 ^ (invert_arg2 ? {NSHIFT{1'b1}} : '0)) + carry_in; // TODO: better way to express the adder?
+	wire [NSHIFT+1-1:0] sum = arg1_s + (arg2_s ^ (invert_arg2 ? {NSHIFT{1'b1}} : '0)) + carry_in; // TODO: better way to express the adder?
+
+	// Calculate signed overflow. TODO: better way, share more logic with the normal sum
+	wire [NSHIFT-1:0] sb = {1'b1, {(NSHIFT-1){1'b0}}};
+	wire [NSHIFT+1-1:0] sum_v = (arg1_s ^ sb) + ((arg2_s ^ (invert_arg2 ? {NSHIFT{1'b1}} : '0)) ^ sb) + carry_in;
+
+	// not a register
+	reg [NSHIFT-1:0] result;
+	always @(*) begin
+		case (operation)
+			OP_ADD, OP_SUB, OP_ADC, OP_SBC: result = sum;
+			OP_AND: result = arg1 & arg2;
+			OP_OR:  result = arg1 | arg2;
+			OP_XOR: result = arg1 ^ arg2;
+			OP_MOV: result = arg2_s;
+		endcase
+	end
+
+
+
+	assign scan_in = update_reg1 ? result : scan_out;
+
+	wire [LOG2_NR-1:0] pre_reg_index = reg1;
+	//wire [LOG2_NR-1:0] pre_reg_index2 = single_reg ? reg1 : reg2;
+	wire [LOG2_NR-1:0] pre_reg_index2 = reg2;
+
+	// If pair_op is true, replace bottom register index bit with state[STATE_BITS_PAIR-1] (zero for first register in pair, then one)
+	assign reg_index  = {pre_reg_index[ LOG2_NR-1:1], pair_op ? second : pre_reg_index[0]};
+	// Will scan second register for both bytes even if just using the lower one
+	assign reg_index2 = {pre_reg_index2[LOG2_NR-1:1], pair_op2 ? second : pre_reg_index2[0]};
+
+	wire next_carry = sum[NSHIFT];
+	wire next_scarry = sum_v[NSHIFT];
+	always @(posedge clk) begin
+		carry <= next_carry;
+		sign2 <= arg2_01[NSHIFT-1];
+
+		if (reset) begin
+			flag_c <= 0;
+			flag_v <= 0;
+			flag_s <= 0;
+			flag_z <= 0;
+		end else if (active) begin
+			if (update_carry_flags) begin
+				flag_c <= next_carry;
+				flag_v <= next_scarry;
+			end
+			if (update_other_flags) begin
+				flag_s <= result[NSHIFT-1];
+				flag_z <= (result == '0) && (flag_z || (state == 0));
+			end
+		end
+	end
+
+	regfile #(.LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) registers(
+		.clk(clk), .reset(reset),
+		.reg_index(reg_index), .reg_index2(reg_index2),
+		.do_scan(do_scan), .do_scan2(do_scan2),
+		.scan_in(scan_in), .scan_in2(scan_in2),
+		.scan_out(scan_out), .scan_out2(scan_out2)
+	);
+
+	// data_out also makes it possible to observe the register file, make sure that it stays that way
+	// so that it doesn't get optimized away.
+	assign data_out = output_scan_out ? scan_out : result;
+endmodule : ALU
