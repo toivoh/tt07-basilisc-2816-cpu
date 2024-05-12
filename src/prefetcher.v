@@ -7,7 +7,7 @@
 
 `include "common.vh"
 
-module prefetcher #( IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IMM_BITS=8 ) (
+module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IMM_BITS=8 ) (
 		input wire clk, reset,
 
 		output wire [15:0] inst,

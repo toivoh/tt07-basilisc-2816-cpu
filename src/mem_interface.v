@@ -5,7 +5,7 @@
 
 `default_nettype none
 
-module memory_interface #( IO_BITS=2, TX_CMD_BITS=2, PAYLOAD_CYCLES=8 ) (
+module memory_interface #( parameter IO_BITS=2, TX_CMD_BITS=2, PAYLOAD_CYCLES=8 ) (
 		input wire clk, reset,
 
 
