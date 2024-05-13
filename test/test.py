@@ -56,6 +56,24 @@ async def test_cpu0(dut):
 		# Untaken branch
 		inst = Branch(4+1, cc=dut.CC_NZ.value); mem[pc] = inst.encode(); pc += 1
 
+		if True:
+			# Indirect jump: jump pc, sext(r8)
+			target_pc = pc + 8
+			inst = Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, 2*target_pc)); mem[pc] = inst.encode(); pc += 1
+			inst = Jump(ArgSextReg(True, 0)); mem[pc] = inst.encode(); pc += 1
+			while pc < target_pc:
+				mem[pc] = 512+pc; pc += 1
+		if False:
+			# Indirect jump: jump pc, [zp]
+			target_pc = pc + 8
+			inst = Jump(ArgMemZP(True, 2*(pc+1))); mem[pc] = inst.encode(); pc += 1
+			mem[pc] = 2*target_pc; pc += 1
+			while pc < target_pc:
+				mem[pc] = 768+pc; pc += 1
+		print("target_pc = ", target_pc)
+		print("pc = ", pc)
+
+
 		for i in range(4):
 			inst = Binop(BinopNum.MOV, ArgReg(True, 2*i), ArgImm8(True, ~i))
 			mem[pc] = inst.encode(); pc += 1

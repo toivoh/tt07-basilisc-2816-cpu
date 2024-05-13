@@ -1,23 +1,24 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Sun May 12 08:57:33 2024
+[*] Mon May 13 06:05:00 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.vcd"
-[dumpfile_mtime] "Sun May 12 08:57:04 2024"
-[dumpfile_size] 22821792
+[dumpfile_mtime] "Sun May 12 13:40:00 2024"
+[dumpfile_size] 197738
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.gtkw"
-[timestart] 0
-[size] 1715 996
+[timestart] 293390000
+[size] 2454 1597
 [pos] -1 -1
-*-23.000000 32880000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 130340000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.cpu.
+[treeopen] tb.top.cpu.dec.
 [treeopen] tb.top.cpu.mem_if.
 [sst_width] 297
-[signals_width] 212
+[signals_width] 268
 [sst_expanded] 1
-[sst_vpaned_height] 296
+[sst_vpaned_height] 507
 @28
 tb.rst_n
 tb.clk
@@ -27,6 +28,13 @@ tb.clk
 tb.top.tx_fetch
 tb.top.tx_pins[1:0]
 tb.top.rx_pins[1:0]
+tb.top.cpu.pref.pc_data_in[1:0]
+@200
+-
+@28
+tb.top.cpu.sc_tx
+tb.top.cpu.sc_tx_command_valid
+tb.top.cpu.tx_command_started
 @200
 -
 -
@@ -38,9 +46,57 @@ tb.r3[7:0]
 tb.r4[7:0]
 tb.r5[7:0]
 tb.r6[7:0]
-@23
 tb.r7[7:0]
 @200
+-
+@28
+tb.top.cpu.pref.inst_reg_valid
+@22
+tb.top.cpu.pref.inst_reg[15:0]
+@200
+-
+-decoder
+@28
+tb.top.cpu.dec.jump
+@200
+-
+-scheduler
+@28
+tb.top.cpu.dec.sched.addr_stage
+@29
+tb.top.cpu.dec.sched.data_stage
+@200
+-
+@28
+tb.top.cpu.dec.sched.inst_done
+tb.top.cpu.dec.sched.op_done
+tb.top.cpu.dec.sched.tx_command_valid
+@200
+-
+@28
+tb.top.cpu.dec.sched.ready
+@200
+-
+-prefetcher
+@22
+tb.top.cpu.pref.pc[15:0]
+@28
+tb.top.cpu.pref.write_pc
+tb.top.cpu.pref.update_pc
+tb.top.cpu.pref.ext_pc_next
+@200
+-
+@28
+tb.top.cpu.pref.num_prefetched[1:0]
+tb.top.cpu.pref.num_flushed[1:0]
+@200
+-
+@28
+tb.top.cpu.pref.sreg_full
+@22
+tb.top.cpu.pref.sreg[15:0]
+@200
+-
 -CPU
 @28
 tb.top.cpu.curr_sc_tx

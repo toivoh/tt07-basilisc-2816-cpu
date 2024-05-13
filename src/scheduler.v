@@ -149,7 +149,8 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 //	wire alu_en = execute && (!send_command || tx_data_next) && (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1]));
 	// send_command: wait for tx_active instead of tx_data_next, which should go high one cycle earlier.
 	// Compensates for the added one cycle delay for the tx data through last_data_out, needed to transmit TX header.
-	wire alu_en = execute && (!send_command || command_active) && (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1])) && (!read_pc || prefetch_idle);
+	wire ready = (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1])) && (!read_pc || prefetch_idle);
+	wire alu_en = execute && (!send_command || command_active) && ready;
 
 
 	wire op_valid = alu_en;
@@ -167,14 +168,14 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire [LOG2_NR-1:0] reg2 = addr_stage ? reg_addr_src : reg_src;
 	wire [NSHIFT-1:0] data_in = curr_src_imm ? imm_data_in : rx_pins; // Must wait for rx_pins to contain the right data
 	assign next_imm_data = curr_src_imm && active;
-	assign ext_pc_next = read_pc && active;
+	assign ext_pc_next = (read_pc || write_pc) && active;
 	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && (dest == `DEST_REG));
 	wire reverse_args = data_stage && (dest == `DEST_MEM) && !curr_src_imm; // Can we have an immediate source and a memory destination at the same time?
 
 	// Should we double r8 in [r16 + r8] for 16 bit wide operations?
 	// SRC_IMM2 case also captures autoincrement/decrement
 	// TODO: Which pc operations should we double arg2 for?
-	wire double_arg2 = (addr_stage && wide && (addr_src == `SRC_IMM7 || addr_src == `SRC_IMM2)) || write_pc;
+	wire double_arg2 = (addr_stage && wide && (addr_src == `SRC_IMM7 || addr_src == `SRC_IMM2)) || (write_pc && curr_src_imm);
 	//wire double_arg2 = addr_stage && wide && !addr_wide2; // double addr_arg2 for most address calculations
 
 	wire [2:0] arg2_limit_length = {(addr_src == `SRC_IMM7) && addr_stage, (src == `SRC_IMM6) && data_stage, (addr_src == `SRC_IMM2) && addr_stage};

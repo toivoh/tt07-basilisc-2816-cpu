@@ -78,22 +78,36 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire use_imm6 = (mdz == 3'b101);
 	wire [1:0] idz_op = rr;
 
+/*
+	111111
+	5432109876543210
+	1eaaamrrdziiiiii
+	000100000ziiiiii	2^7 	r16, rr  = 0, 	mov pc, [zp]
+	0010000000iiiiii	2^6 	r8,  rrg = 0 	mov pc, src
+*/
+	//wire jump_zp = (inst[15:8] == '9b000100000);
+	//wire jump_src = (inst[15:7] == '10b0010000000);
+
 	// not registers
 	reg [CLASS_BITS-1:0] cls;
 	reg wide;
 	reg [2:0] r;
 	reg [2:0] shift_op;
+	reg use_zp;
 	reg use_imm8; // overrides d, z when true: it has to be a mov r, imm8
 	reg branch;
 	reg src1_from_pc;
+	reg jump;
 	always @(*) begin
 		cls = 'X;
 		wide = 1'bX;
 		r = 'X;
 		shift_op = 'X;
+		use_zp = (m == 0);
 		use_imm8 = 0;
 		branch = 0;
 		src1_from_pc = 0;
+		jump = 0;
 
 //				111111
 //				5432109876543210
@@ -120,16 +134,35 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 //		100 	101 		110 	111 		00x 		01x
 //		(r, s)	(r, imm6)	(d, r)	(d, r)b		(r, zp)x2	(zp, r)x2
 //	1x	<---------- mov r, imm8 ---------->		inc/dec/zero zp	swap
-				/*
 				if (m == 1) use_imm8 = 1;
-				if ({m, d} == 2'b00) cls = CLASS_INCDECZERO;
+				if ({m, d} == 2'b00) begin
+					if (rr == 0) begin
+						jump = 1;
+						cls = CLASS_MOV;
+						if (wide) begin
+	//							111111
+	//							5432109876543210
+							//  000100000ziiiiii	mov pc, [zp]
+							// Should be all set?
+						end else if (z == 0) begin
+	//							111111
+	//							5432109876543210
+							//  0010000000iiiiii	mov pc, src
+							wide = 1;
+							use_zp = 0;
+						end
+					end else begin
+						cls = CLASS_INCDECZERO;
+					end
+				end
 				if ({m, d} == 2'b01) cls = CLASS_SWAP;
-				*/
+				/*
 				use_imm8 = 1;
 				if (m == 0) begin
 					cls = CLASS_ALU;
 					src1_from_pc = 1;
 				end
+				*/
 			end else begin
 //		100 	101 		110 	111 		00x 		01x
 //		(r, s)	(r, imm6)	(d, r)	(d, r)b		(r, zp)x2	(zp, r)x2
@@ -173,7 +206,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			arg2_src = `SRC_IMM8;
 			wide2 = 0;
 			src_sext2 = 1;
-		end else if (m == 0) begin
+		end else if (use_zp) begin
 			// zp
 			arg2_src = `SRC_MEM;
 			addr_op = `OP_MOV;
@@ -184,6 +217,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			wide2 = 0;
 			src_sext2 = 1;
 		end else begin
+			// Regular dest/src
 			if (arg2_enc[5] == 1) begin
 				// 1RRrrr	[r16 + r8]
 				// TODO: special cases when r16 + r8 overlap, maybe imm16 + r8 case too
@@ -224,7 +258,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire update_other_flags = (cls == CLASS_ALU || cls == CLASS_SHIFT || cls == CLASS_INCDECZERO);
 	wire update_carry_flags = ((cls == CLASS_ALU && !aaa[`OP_BIT_NADD]) || cls == CLASS_SHIFT || cls == CLASS_INCDECZERO);
 
-	wire [`DEST_BITS-1:0] dest = branch ? `DEST_PC : ( ((d && !use_imm8) && (arg2_src == `SRC_MEM)) ? `DEST_MEM : `DEST_REG );
+	wire [`DEST_BITS-1:0] dest = (branch || jump) ? `DEST_PC : ( ((d && !use_imm8) && (arg2_src == `SRC_MEM)) ? `DEST_MEM : `DEST_REG );
 	wire [LOG2_NR-1:0] reg_dest = arg1_reg;
 	wire [`SRC_BITS-1:0] src = arg2_src;
 	wire [LOG2_NR-1:0] reg_src = arg2_reg;

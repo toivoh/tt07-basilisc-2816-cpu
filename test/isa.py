@@ -41,6 +41,9 @@ class State:
 	def get_pc(self):
 		return self.pc
 
+	def set_pc(self, pc):
+		self.pc = pc & 0xffff
+
 	def step_pc(self, step):
 		self.pc = (self.pc + 2*step) & 0xffff
 
@@ -287,8 +290,9 @@ class ArgImm8(Arg):
 
 # Temporary: Might be removed, or encoding changed
 class ArgPCPlusImm8(Arg):
-	"""PC + imm8"""
+	"""pc + imm8"""
 	def __init__(self, wide, offset):
+		assert False # not implemented
 		assert wide
 		assert -128 <= offset <= 127
 		super().__init__(wide)
@@ -304,7 +308,7 @@ class ArgPCPlusImm8(Arg):
 		return self.offset & 255
 
 #class ArgPC(Arg):
-#	"""PC"""
+#	"""pc"""
 #	def __init__(self, wide):
 #		assert wide
 #		super().__init__(wide)
@@ -326,7 +330,7 @@ class Binop(Instruction):
 		assert isinstance(binop, BinopNum)
 		assert isinstance(arg1, Arg)
 		assert isinstance(arg2, Arg)
-		assert isinstance(arg1, ArgReg) or isinstance(arg2, ArgReg) 
+		assert isinstance(arg1, ArgReg) or isinstance(arg2, ArgReg)
 		assert arg1.wide == arg2.wide
 		wide = arg1.wide
 
@@ -444,6 +448,43 @@ class Binop(Instruction):
 			prefix = 1 if self.wide else 2 | (reg1&1)
 			#print((prefix, o, m, reg1, d, z, arg2.encode(is_dest=d), type(arg2)))
 			return (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T)
+
+class Jump(Instruction):
+	def __init__(self, arg):
+		assert isinstance(arg, Arg)
+		assert arg.wide
+
+		super().__init__()
+		self.arg = arg
+
+	def execute(self, state):
+		# Calculate memory addresses before applying side effects (postincrement/predecrement)
+		if isinstance(self.arg, ArgMem): arg = self.arg.get_value(state)
+
+		self.arg.apply_side_effect(state)
+
+		# Read registers as data after applying side effects, even postincrement
+		if not isinstance(self.arg, ArgMem): arg = self.arg.get_value(state)
+
+		arg = arg & bitmask(True)
+
+
+		print("jump(", hex(arg), "=)")
+
+		state.set_pc(arg)
+
+	def encode(self):
+		if isinstance(self.arg, ArgMemZP):
+			# 111111
+			# 5432109876543210
+			# 000100000ziiiiii	mov pc, [zp]
+			return (1 << 12) | self.arg.encode(is_dest=False, T=ArgMemZP)
+		else:
+			# 111111
+			# 5432109876543210
+			# 0010000000iiiiii	mov pc, src
+			return (1 << 13) | self.arg.encode(is_dest=False)
+
 
 class Branch(Instruction):
 	def __init__(self, offset, cc=0, taken=None):
