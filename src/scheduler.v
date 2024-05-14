@@ -146,11 +146,13 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	reg addr_lsb;
 	wire wait_for_2nd_mem_half = !wide && addr_lsb;
 
+/*
 //	wire alu_en = execute && (!send_command || tx_data_next) && (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1]));
 	// send_command: wait for tx_active instead of tx_data_next, which should go high one cycle earlier.
 	// Compensates for the added one cycle delay for the tx data through last_data_out, needed to transmit TX header.
+*/
 	wire ready = (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1])) && (!read_pc || prefetch_idle);
-	wire alu_en = execute && (!send_command || command_active) && ready;
+	wire alu_en = execute && (!send_command || (command_active && tx_data_next)) && ready;
 
 
 	wire op_valid = alu_en;
@@ -198,15 +200,17 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	assign pc_data_out = data_out;
 
+/*
 	// Delay output data by one cycle to allow time to start tx header.
 	// Would it be better to delay the rx data coming in instead?
 	reg [NSHIFT-1:0] last_data_out;
 	always @(posedge clk) last_data_out <= data_out;
+*/
 
 	// Assumes that we're receiving the right rx message; the one with the data we just asked for
 	assign tx_command_valid = send_command && (!rmw_command || rx_started);
 	assign tx_command = send_read ? `TX_HEADER_READ_16 : (wide ? `TX_HEADER_WRITE_16 : `TX_HEADER_WRITE_8);
-	assign tx_data = last_data_out;
+	assign tx_data = data_out; // last_data_out;
 
 	always @(posedge clk) begin
 		if (addr_stage && tx_counter == 0) addr_lsb <= tx_data[0];

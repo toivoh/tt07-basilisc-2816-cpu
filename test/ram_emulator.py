@@ -51,7 +51,7 @@ class RAMEmulator:
 					#data = self.mem[self.addr]
 					# Ignore LSB of addr for now when reading 16 bits
 					data = self.mem[self.addr>>1]
-					self.tx_buffer = (data << self.IO_BITS) | RX_SB_READ_16 # including start bits
+					self.tx_buffer = (data << (2*self.IO_BITS)) | RX_SB_READ_16 # including start bits
 					print("Read16 mem[", hex(self.addr), "] = ", hex(data))
 				elif self.rx_header == TX_HEADER_WRITE_16:
 					print("Write16 mem[", hex(self.addr), "] = ", hex(self.rx_buffer))
@@ -170,7 +170,7 @@ class MockRAMEmulator:
 				if tx_response != None:
 					assert self.tx_buffer == 0 # so that we can replace it
 					header, data = tx_response
-					self.tx_buffer = (data << self.IO_BITS) | header
+					self.tx_buffer = (data << (2*self.IO_BITS)) | header
 
 		tx0 = self.tx_buffer & self.tx_mask
 		self.tx_buffer >>= self.IO_BITS

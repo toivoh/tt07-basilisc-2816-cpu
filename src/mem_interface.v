@@ -71,7 +71,8 @@ module memory_interface #( parameter IO_BITS=2, TX_CMD_BITS=2, PAYLOAD_CYCLES=8 
 	sbio_monitor #(
 		.IO_BITS(IO_BITS), .SENS_BITS(2), .COUNTER_BITS(SBIO_COUNTER_BITS),
 		//.INACTIVE_COUNTER_VALUE(2**SBIO_COUNTER_BITS-1)
-		.INACTIVE_COUNTER_VALUE({SBIO_COUNTER_BITS{1'b1}}) // = 2**SBIO_COUNTER_BITS-1
+		//.INACTIVE_COUNTER_VALUE({SBIO_COUNTER_BITS{1'b1}}) // = 2**SBIO_COUNTER_BITS-1
+		.INACTIVE_COUNTER_VALUE({{(SBIO_COUNTER_BITS-1){1'b1}}, 1'b0}) // = 2**SBIO_COUNTER_BITS-2
 	) sbio_rx (
 		.clk(clk), .reset(reset),
 		.pins(rx_pins),
@@ -84,7 +85,8 @@ module memory_interface #( parameter IO_BITS=2, TX_CMD_BITS=2, PAYLOAD_CYCLES=8 
 
 	// rx_active goes high the cycle after we have received the start bits
 	assign rx_sbs_valid = rx_active;
-	assign rx_data_valid = rx_active;
+	//assign rx_data_valid = rx_active;
+	assign rx_data_valid = rx_counter[SBIO_COUNTER_BITS-1] == 0;
 
 	// Assumes that all messages have length described by PAYLOAD_CYCLES
 	assign rx_done = (rx_counter == PAYLOAD_CYCLES - 1);
