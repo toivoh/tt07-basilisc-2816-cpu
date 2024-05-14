@@ -48,22 +48,34 @@ class RAMEmulator:
 
 				if self.rx_header == TX_HEADER_READ_16:
 					self.addr = self.rx_buffer
-					#data = self.mem[self.addr]
-					# Ignore LSB of addr for now when reading 16 bits
-					data = self.mem[self.addr>>1]
+
+					#data = self.mem[self.addr>>1] # Ignore LSB of addr for now when reading 16 bits
+					if (self.addr & 1) == 0:
+						data = self.mem[self.addr>>1]
+					else:
+						data = ((self.mem[self.addr>>1] >> 8) & 0xff) | ((self.mem[((self.addr + 1)&0xffff)>>1] << 8) & 0xff00)
+
 					self.tx_buffer = (data << (2*self.IO_BITS)) | RX_SB_READ_16 # including start bits
 					print("Read16 mem[", hex(self.addr), "] = ", hex(data))
+
 				elif self.rx_header == TX_HEADER_WRITE_16:
 					print("Write16 mem[", hex(self.addr), "] = ", hex(self.rx_buffer))
-					#self.mem[self.addr] = self.rx_buffer
-					#self.addr = (self.addr + 1) & 0xffff
-					self.mem[self.addr>>1] = self.rx_buffer
+
+					#self.mem[self.addr>>1] = self.rx_buffer & 0xffff
+					data = self.rx_buffer & 0xffff
+					if (self.addr & 1) == 0:
+						self.mem[self.addr>>1] = data
+					else:
+						self.mem[self.addr>>1] = (self.mem[self.addr>>1] & 0x00ff) | ((data << 8) & 0xff00)
+						ind = ((self.addr + 1)&0xffff)>>1
+						self.mem[ind]         = (self.mem[ind]           & 0xff00) | ((data >> 8) & 0x00ff)
+
 					self.addr = (self.addr + 2) & 0xffff
 					# TODO: ack?
 				elif self.rx_header == TX_HEADER_WRITE_8:
 					addr_lsb = self.addr & 1
-					#data = self.rx_buffer & 0xff
-					data = (self.rx_buffer >> (8*addr_lsb)) & 0xff
+					data = self.rx_buffer & 0xff
+					#data = (self.rx_buffer >> (8*addr_lsb)) & 0xff
 					print("Write8 mem[", hex(self.addr), "] = ", hex(data))
 					#addr_lsb = (self.rx_buffer >> 8) & 1
 					if addr_lsb == 0: self.mem[self.addr>>1] = (self.mem[self.addr>>1] & 0xff00) | data
@@ -123,8 +135,9 @@ class MockRAMEmulator:
 		print("Read mem[", hex(addr), "] =", hex(data))
 
 		if wide: return data
-		elif (addr&1)==0: return data & 0xff
-		else: return (data >> 8) & 0xff
+		else: return data & 0xff
+		#elif (addr&1)==0: return data & 0xff
+		#else: return (data >> 8) & 0xff
 
 	def write_mem(self, addr, value, wide):
 		assert len(self.sequence) >= 1
@@ -134,8 +147,9 @@ class MockRAMEmulator:
 		if wide:
 			self.sequence.append(((TX_HEADER_WRITE_16, value, 0xffff), None))
 		else:
-			shift = (addr&1)*8
-			self.sequence.append(((TX_HEADER_WRITE_8, value << shift, 0xff << shift), None))
+			#shift = (addr&1)*8
+			#self.sequence.append(((TX_HEADER_WRITE_8, value << shift, 0xff << shift), None))
+			self.sequence.append(((TX_HEADER_WRITE_8, value, 0xff), None))
 		print("Write mem16[" if wide else "Write mem8[", hex(addr), "] =", hex(value))
 
 	def step(self, rx, alt=False):

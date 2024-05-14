@@ -144,14 +144,15 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire wait_for_mem = data_stage && (src == `SRC_MEM) && tx_reply_wanted;
 	wire rmw_command = send_write && wait_for_mem;
 	reg addr_lsb;
-	wire wait_for_2nd_mem_half = !wide && addr_lsb;
+	//wire wait_for_2nd_mem_half = !wide && addr_lsb;
 
 /*
 //	wire alu_en = execute && (!send_command || tx_data_next) && (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1]));
 	// send_command: wait for tx_active instead of tx_data_next, which should go high one cycle earlier.
 	// Compensates for the added one cycle delay for the tx data through last_data_out, needed to transmit TX header.
 */
-	wire ready = (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1])) && (!read_pc || prefetch_idle);
+	//wire ready = (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1])) && (!read_pc || prefetch_idle);
+	wire ready = (!wait_for_mem || rx_data_valid) && (!read_pc || prefetch_idle);
 	wire alu_en = execute && (!send_command || (command_active && tx_data_next)) && ready;
 
 
