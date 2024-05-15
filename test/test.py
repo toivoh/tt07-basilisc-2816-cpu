@@ -148,21 +148,28 @@ async def test_cpu(dut):
 	pos = 0
 	instructions = []
 	pcs = []
+	jump_flags = []
 	last_addr = None
 	num_flushed = 0
 
 	def exec(inst):
 		pcs.append(state.pc)
+		jump_flags.append(state.jumped)
 		inst.execute(state)
 		instructions.append(inst.encode())
 
-	def get_next_inst(header, addr):
+	def get_next_inst(header, addr, jumped):
 		nonlocal pos, last_addr, num_flushed
 		assert header == TX_HEADER_READ_16 # Check that the fetch is a 16 bit read
 
 		#print((pos, addr, pcs[pos], hex(instructions[pos])))
 
-		if addr != pcs[pos]:
+		want_jump = jump_flags[pos]
+		assert (not jumped) or want_jump
+
+		#if addr != pcs[pos]:
+		if want_jump and not jumped:
+			# Prefetching instruction data that should be discarded before it gets to be executed
 			last_addr = (last_addr + 2) & 0xffff
 			assert addr == last_addr
 			num_flushed += 1
@@ -181,7 +188,7 @@ async def test_cpu(dut):
 	ram_emu = MockRAMEmulator(delay=1, alt_responder=get_next_inst)
 	state.ram_emu = ram_emu
 
-	min_jump = 4
+	min_jump = 1
 
 	#for i in range(8):
 	#	exec(Binop(BinopNum.MOV, ArgReg(False, i), ArgImm8(False, state.get_reg(i))))
@@ -218,6 +225,8 @@ async def test_cpu(dut):
 
 				offset = randrange(-128, 128 - min_jump)
 				if offset >= 0: offset += min_jump
+				#offset = randrange(min_jump, 4)
+
 				#taken = (not taken) or cc == 0
 				exec(Branch(offset, cc=cc, taken=taken))
 
@@ -275,10 +284,11 @@ async def test_cpu(dut):
 		#tx, tx_fetch = dut.tx_pins.value.integer, dut.tx_fetch.value.integer
 		uo_out = dut.uo_out.value.integer
 		tx = uo_out & 3
-		tx_fetch = (uo_out >> 2) & 1
+		tx_fetch = ((uo_out >> 2) & 1) != 0
+		tx_jump  = ((uo_out >> 3) & 1) != 0
 
 		#print("tx = ", tx)
-		rx = ram_emu.step(tx, alt=tx_fetch)
+		rx = ram_emu.step(tx, alt=tx_fetch, alt_arg=tx_jump)
 		#dut.rx_pins.value = rx
 		dut.ui_in.value = rx
 

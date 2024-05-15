@@ -33,6 +33,8 @@ class State:
 		self.flag_s = 0
 		self.flag_z = 0
 
+		self.jumped = False
+
 	def get_reg(self, index, pair=False, sext=False):
 		if pair: return self.regs[index & ~1] | (self.regs[index | 1] << REG_BITS)
 		else:
@@ -42,9 +44,12 @@ class State:
 		return self.pc
 
 	def set_pc(self, pc):
+		self.jumped = True
 		self.pc = pc & 0xffff
 
-	def step_pc(self, step):
+	def step_pc(self, step=1, jump=False):
+		assert step==1 or jump
+		self.jumped = jump
 		self.pc = (self.pc + 2*step) & 0xffff
 
 	def set_reg(self, index, value, pair=False):
@@ -385,7 +390,7 @@ class Binop(Instruction):
 		print("binop(", self.wide, ", ", self.binop, ", ", hex(arg1), ", ", hex(arg2), ") =", hex(result))
 
 		state.set_dest(dest, result)
-		state.step_pc(1)
+		state.step_pc()
 
 	def encode(self):
 		assert 0 <= self.binop.value <= 7 or self.binop == BinopNum.MOV
@@ -502,8 +507,8 @@ class Branch(Instruction):
 	def execute(self, state):
 		#print("PC = ", state.pc)
 		assert isinstance(self.taken, bool)
-		if self.taken: state.step_pc(self.offset)
-		else: state.step_pc(1)
+		if self.taken: state.step_pc(self.offset, jump=True)
+		else: state.step_pc()
 		#print("PC = ", state.pc)
 
 	def encode(self):

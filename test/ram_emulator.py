@@ -152,7 +152,7 @@ class MockRAMEmulator:
 			self.sequence.append(((TX_HEADER_WRITE_8, value, 0xff), None))
 		print("Write mem16[" if wide else "Write mem8[", hex(addr), "] =", hex(value))
 
-	def step(self, rx, alt=False):
+	def step(self, rx, alt=False, alt_arg=None):
 		"""Takes rx, returns tx"""
 
 		if self.rx_counter == 0:
@@ -161,6 +161,7 @@ class MockRAMEmulator:
 		elif self.rx_counter == 1:
 			self.rx_header = rx
 			self.alt = alt
+			self.alt_arg = alt_arg
 			self.rx_counter += 1
 			#print("rx_header = ", self.rx_header)
 		else:
@@ -172,7 +173,7 @@ class MockRAMEmulator:
 				self.rx_counter = 0
 
 				if self.alt:
-					tx_response = self.alt_responder(self.rx_header, self.rx_buffer)
+					tx_response = self.alt_responder(self.rx_header, self.rx_buffer, self.alt_arg)
 				else:
 					assert self.seq_index < len(self.sequence)
 					rx_expect, tx_response = self.sequence[self.seq_index]

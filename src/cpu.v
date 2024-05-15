@@ -12,6 +12,7 @@ module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, MAX_
 		input wire clk, reset,
 
 		output wire tx_fetch, // High when the message on tx_pins is for fetching instructions
+		output wire tx_jump,  // High when the message on tx_pins is for fetching the first instruction after a jump
 		output wire [IO_BITS-1:0] tx_pins,
 		input wire [IO_BITS-1:0] rx_pins
 	);
@@ -40,6 +41,7 @@ module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, MAX_
 	wire sc_tx = tx_active ? curr_sc_tx : sc_tx_wanted;
 	wire pf_tx = !sc_tx;
 	assign tx_fetch = pf_tx || write_pc;
+	assign tx_jump = write_pc;
 
 	// Choose TX source
 	wire tx_command_valid              = (sc_tx ? sc_tx_command_valid : pf_tx_command_valid) && !full;

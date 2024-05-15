@@ -28,16 +28,16 @@ module tt_um_toivoh_basilisc_2816 #( parameter IO_BITS=2 )(
 	end
 	assign uo_out = uo_out_reg;
 
-	wire tx_fetch;
+	wire tx_fetch, tx_jump;
 	wire [IO_BITS-1:0] tx_pins;
 	wire [IO_BITS-1:0] rx_pins;
 
 	CPU #( .IO_BITS(IO_BITS) ) cpu (
 		.clk(clk), .reset(reset),
-		.tx_fetch(tx_fetch), .tx_pins(tx_pins), .rx_pins(rx_pins)
+		.tx_fetch(tx_fetch), .tx_jump(tx_jump), .tx_pins(tx_pins), .rx_pins(rx_pins)
 	);
 
-	assign uo_out0 = {5'd0, tx_fetch, tx_pins};
+	assign uo_out0 = {4'd0, tx_jump, tx_fetch, tx_pins};
 	assign rx_pins = ui_in_reg[1:0];
 
 	assign uio_out = 0;
