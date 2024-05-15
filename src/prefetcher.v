@@ -96,9 +96,9 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 	assign inst = inst_reg;
 	assign imm_data_out = imm_reg[IO_BITS-1:0];
 
-	// An instruction word leaves the prefetch stage when it enters the instruction register, which happens when remove is high.
-	assign remove = !inst_valid && last_valid;
+	// An instruction word leaves the prefetch stage when it enters the instruction register or is flushed, which happens when remove is high.
 	wire pre_discard = (num_flushed != 0);
+	assign remove = last_valid && (pre_discard || !inst_valid);
 	wire discard = remove && pre_discard;
 	wire load_inst_reg = remove && !pre_discard;
 
