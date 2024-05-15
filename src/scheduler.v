@@ -72,7 +72,9 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire rx_done, // only high when receiving scheduler data
 		input wire [NSHIFT-1:0] rx_pins
 	);
+
 	// Evaluate condition code
+	// -----------------------
 	wire flag_c, flag_v, flag_s, flag_z;
 
 	reg cc_ok; // not a register
@@ -97,29 +99,11 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire skip = use_cc && !cc_ok;
 	wire execute = inst_valid && !skip;
 
+	// Stage and command progression
+	// -----------------------------
+	wire op_done;
 	reg stage;
 	reg command_active; // Has the current command been started yet? It's not enough if there is a previous command active.
-	wire need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM);
-	wire addr_stage = (stage == 0) && need_addr;
-	wire data_stage = !addr_stage;
-
-	wire read_pc = data_stage && src1_from_pc;
-	wire write_pc = data_stage && (dest == `DEST_PC);
-	wire normal_data_stage = data_stage && !(dest == `DEST_PC);
-	assign block_prefetch = execute && (read_pc || write_pc);
-	assign write_pc_now = execute && write_pc && prefetch_idle;
-
-	wire send_read = addr_stage || write_pc; // When write_pc is high, we do the first prefetch at the same time as writing PC
-	wire will_write = (dest == `DEST_MEM);
-	assign reserve_tx = execute && will_write;
-	wire send_write = data_stage && will_write;
-	wire send_command = execute && (send_read || send_write);
-
-	// !((dest == `DEST_MEM) && (op == `OP_MOV)) should detect a mov [addr], reg,
-	// but the timing is one cycle off we we set tx_reply_wanted = 0.
-	// TODO: Fix the timing issues related to that TX messages have one more cycle of header compared to RX messages,
-	// and reenable this.
-	assign tx_reply_wanted = 1; //!((dest == `DEST_MEM) && (op == `OP_MOV));
 
 	always @(posedge clk) begin
 		if (reset || inst_done) begin
@@ -137,31 +121,71 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	assign inst_done = (op_done && data_stage) || skip;
 
+	wire need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM); // Assume need_addr means that we send a read during the address stage
+	wire addr_stage = (stage == 0) && need_addr;
+	wire data_stage = !addr_stage;
+
+	// Stage properties
+	// ----------------
+	wire read_pc  = data_stage && src1_from_pc;
+	wire write_pc = data_stage && (dest == `DEST_PC);
+	wire access_pc = read_pc || write_pc;
+
+	wire block_flag_updates = !data_stage || (dest == `DEST_PC);
+
+	wire send_read = addr_stage || (data_stage && write_pc); // When write_pc is high, we do the first prefetch at the same time as writing PC
+	wire will_write = (dest == `DEST_MEM);
+	// If we will make a write during the data stage, the address will be the last address sent, so we can't let in any transactions between the address and data stages
+	wire send_write = data_stage && will_write;
+	wire send_command = send_read || send_write;
+
 	wire [`SRC_BITS-1:0] curr_src = addr_stage ? addr_src : src;
 	wire curr_src_imm = curr_src[`SRC_BIT_IMM];
 
-	//wire wait_for_mem = data_stage && (src == `SRC_MEM);
-	wire wait_for_mem = data_stage && (src == `SRC_MEM) && tx_reply_wanted;
-	wire rmw_command = send_write && wait_for_mem;
-	reg addr_lsb;
-	//wire wait_for_2nd_mem_half = !wide && addr_lsb;
+	// Stage control outputs
+	// ---------------------
+	assign block_prefetch = execute && access_pc;
+	assign write_pc_now   = execute && write_pc && prefetch_idle;
 
-/*
-//	wire alu_en = execute && (!send_command || tx_data_next) && (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1]));
-	// send_command: wait for tx_active instead of tx_data_next, which should go high one cycle earlier.
-	// Compensates for the added one cycle delay for the tx data through last_data_out, needed to transmit TX header.
-*/
-	//wire ready = (!wait_for_mem || rx_data_valid && (!wait_for_2nd_mem_half || rx_counter[$clog2(PAYLOAD_CYCLES)-1])) && (!read_pc || prefetch_idle);
-	wire ready = (!wait_for_mem || rx_data_valid) && (!read_pc || prefetch_idle);
-	wire alu_en = execute && (!send_command || (command_active && tx_data_next)) && ready;
+	assign reserve_tx     = execute && will_write;
 
+	// tx_reply_wanted should be constant between the address and data stages so that the data stage knows if it should wait for data.
+	// !((dest == `DEST_MEM) && (op == `OP_MOV)) should detect a mov [addr], reg,
+	// but the timing is one cycle off we we set tx_reply_wanted = 0.
+	// TODO: Fix the timing issues related to that TX messages have one more cycle of header compared to RX messages,
+	// and reenable this.
+	assign tx_reply_wanted = 1; //!((dest == `DEST_MEM) && (op == `OP_MOV));
 
-	wire op_valid = alu_en;
-	wire op_done;
+	assign tx_command = send_read ? `TX_HEADER_READ_16 : (wide ? `TX_HEADER_WRITE_16 : `TX_HEADER_WRITE_8);
 
+	// Wait to start
+	// -------------
+	wire wait_for_mem = data_stage && need_addr && tx_reply_wanted;
+
+	// Wait conditions shared by command start and alu enable. If no command should be sent this stage, the ALU needs to wait for them anyway.
+	wire both_wait = access_pc && !prefetch_idle;
+	// These conditions assume that we're receiving the right RX message; the one with the data we just asked for.
+	// Which we do since the scheduler will only have one outstanding read that it waits to respond to.
+	wire command_wait = both_wait || (wait_for_mem && !rx_started);
+	wire alu_wait     = both_wait || (wait_for_mem && !rx_data_valid) || (send_command && !(command_active && tx_data_next)); // Shouldn't need to check that this is the right RX data, no other can be outstanding
+
+	// We might still wait for the command to be started when tx_command_valid is high. But hopefully not if it is a response to incoming data (then reserve_tx will have been held high since the read was sent).
+	assign tx_command_valid = execute && !command_wait && send_command;
+	wire alu_en             = execute && !alu_wait;
+
+	// Advance external data sources and feed data sinks
+	// -------------------------------------------------
 	wire active;
 	wire [NSHIFT-1:0] data_out;
 
+	assign next_imm_data = curr_src_imm && active;
+	assign ext_pc_next = access_pc && active;
+
+	assign pc_data_out = data_out;
+	assign tx_data     = data_out;
+
+	// Invoke ALU
+	// ----------
 	wire [`OP_BITS-1:0] operation = addr_stage ? (addr_op == `ADDR_OP_MOV ? `OP_MOV : `OP_ADD) : op;
 	wire pair_op  = addr_stage ? 1'b1 : wide;
 	wire pair_op2 = addr_stage ? addr_wide2 : wide2;
@@ -170,8 +194,6 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire [LOG2_NR-1:0] reg1 = addr_stage ? addr_reg1 : reg_dest;
 	wire [LOG2_NR-1:0] reg2 = addr_stage ? reg_addr_src : reg_src;
 	wire [NSHIFT-1:0] data_in = curr_src_imm ? imm_data_in : rx_pins; // Must wait for rx_pins to contain the right data
-	assign next_imm_data = curr_src_imm && active;
-	assign ext_pc_next = (read_pc || write_pc) && active;
 	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && (dest == `DEST_REG));
 	wire reverse_args = data_stage && (dest == `DEST_MEM) && !curr_src_imm; // Can we have an immediate source and a memory destination at the same time?
 
@@ -187,33 +209,15 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	ALU #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) alu (
 		.clk(clk), .reset(reset),
-		.op_done(op_done), .op_valid(op_valid),
+		.op_done(op_done), .op_valid(alu_en),
 		.operation(operation),
 		.external_arg1(external_arg1), .external_arg2(external_arg2),
 		.pair_op(pair_op), .pair_op2(pair_op2), .sext2(sext2), .arg2_limit_length(arg2_limit_length),
 		.reg1(reg1), .reg2(reg2), .update_reg1(update_reg1), .reverse_args(reverse_args), .double_arg2(double_arg2),
 		.output_scan_out(output_scan_out),
-		.update_carry_flags(update_carry_flags && normal_data_stage), .update_other_flags(update_other_flags && normal_data_stage),
+		.update_carry_flags(update_carry_flags && !block_flag_updates), .update_other_flags(update_other_flags && !block_flag_updates),
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(pc_data_in), .data_in2(data_in), .data_out(data_out),
 		.counter(comp_counter)
 	);
-
-	assign pc_data_out = data_out;
-
-/*
-	// Delay output data by one cycle to allow time to start tx header.
-	// Would it be better to delay the rx data coming in instead?
-	reg [NSHIFT-1:0] last_data_out;
-	always @(posedge clk) last_data_out <= data_out;
-*/
-
-	// Assumes that we're receiving the right rx message; the one with the data we just asked for
-	assign tx_command_valid = send_command && (!rmw_command || rx_started);
-	assign tx_command = send_read ? `TX_HEADER_READ_16 : (wide ? `TX_HEADER_WRITE_16 : `TX_HEADER_WRITE_8);
-	assign tx_data = data_out; // last_data_out;
-
-	always @(posedge clk) begin
-		if (addr_stage && tx_counter == 0) addr_lsb <= tx_data[0];
-	end
 endmodule : scheduler
