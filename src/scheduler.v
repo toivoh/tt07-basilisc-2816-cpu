@@ -154,7 +154,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// but the timing is one cycle off we we set tx_reply_wanted = 0.
 	// TODO: Fix the timing issues related to that TX messages have one more cycle of header compared to RX messages,
 	// and reenable this.
-	assign tx_reply_wanted = 1; //!((dest == `DEST_MEM) && (op == `OP_MOV));
+	assign tx_reply_wanted = !((dest == `DEST_MEM) && (op == `OP_MOV));
 
 	assign tx_command = send_read ? `TX_HEADER_READ_16 : (wide ? `TX_HEADER_WRITE_16 : `TX_HEADER_WRITE_8);
 
