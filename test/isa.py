@@ -553,8 +553,8 @@ def rand_arg_imm6(wide):
 def rand_arg_imm8(wide):
 	return ArgImm8(wide, randrange(-128, 128))
 
-def rand_arg(wide, is_src=False):
-	n = randrange(5+2*(is_src and wide))
+def rand_arg(wide, is_src=False, d_symmetry=True):
+	n = randrange(5+(1+d_symmetry)*(is_src and wide))
 	if   n == 0: return rand_arg_mem_r16r8(wide)
 	elif n == 1: return rand_arg_mem_r16incdec(wide)
 	elif n == 2: return rand_arg_mem_r16imm2(wide)

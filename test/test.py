@@ -235,14 +235,28 @@ async def test_cpu(dut):
 	# Reinitialize to random register values
 	for i in range(0, NREGS): exec(Binop(BinopNum.MOV, ArgReg(False, i), ArgImm8(False, randrange(255))))
 
+
+	# Test different kinds of indirect jumps
+	exec(Jump(rand_arg_mem_r16r8(True)))
+	exec(Jump(rand_arg_mem_r16incdec(True)))
+	exec(Jump(rand_arg_mem_r16imm2(True)))
+	exec(Jump(rand_arg_mem_zp(True)))
+	exec(Jump(rand_arg_reg(True)))
+	exec(Jump(rand_arg_sext_reg(True)))
+	#exec(Jump(rand_arg_zext_reg(True))) # not supported
+
+
 	for iter in range(n_tests):
-		if randrange(16) == 0:
-			# Avoid jumping with offset = 0
-			# and small positive offsets since it will confuse the prefetch flush detection logic
-			offset = randrange(-128, 128 - min_jump)
-			if offset >= 0: offset += min_jump
-			inst = Branch(offset)
-			print("Branch ", inst.offset)
+		if randrange(8) == 0:
+			if randbool():
+				# Avoid jumping with offset = 0
+				offset = randrange(-128, 128 - min_jump)
+				if offset >= 0: offset += min_jump
+				inst = Branch(offset)
+				print("Branch ", inst.offset)
+			else:
+				inst = Jump(rand_arg(True, is_src=True, d_symmetry=False))
+				print("Jump")
 		else:
 			wide = randbool()
 			# TODO: Test CMP, TEST
