@@ -112,6 +112,7 @@ class MockRAMEmulator:
 
 	def reset(self, check=True):
 		if check:
+			print((self.done(), self.rx_counter, self.seq_index, len(self.sequence)))
 			#assert self.tx_buffer == 0
 			assert self.rx_counter == 0
 			assert self.seq_index == len(self.sequence)

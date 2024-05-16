@@ -367,14 +367,17 @@ class Binop(Instruction):
 		arg1 = arg1 & bitmask(self.wide)
 		arg2 = arg2 & bitmask(self.wide)
 
+		update_dest = True
+
 		if   self.binop == BinopNum.ADD:  result = arg1 + arg2
 		elif self.binop == BinopNum.SUB:  result = arg1 - arg2 + (bitmask(self.wide)+1)
+		elif self.binop == BinopNum.CMP:  result = arg1 - arg2 + (bitmask(self.wide)+1); update_dest = False # same as SUB but don't update dest
 		elif self.binop == BinopNum.ADC:  result = arg1 + arg2 + state.flag_c
 		elif self.binop == BinopNum.SBC:  result = arg1 - arg2 + state.flag_c + bitmask(self.wide)
 		elif self.binop == BinopNum.AND:  result = arg1 & arg2
 		elif self.binop == BinopNum.OR:   result = arg1 | arg2
 		elif self.binop == BinopNum.XOR:  result = arg1 ^ arg2
-		elif self.binop == BinopNum.CMP:  result = arg1 # No change
+		#elif self.binop == BinopNum.CMP:  result = arg1 # No change
 		elif self.binop == BinopNum.TEST: result = arg1 # No change
 		elif self.binop == BinopNum.MOV:  result = arg2
 		else: raise ValueError("Unsupported binop value: ", self.binop)
@@ -383,13 +386,13 @@ class Binop(Instruction):
 			state.flag_z = (result & bitmask(self.wide)) == 0
 			state.flag_s = ((result >> (8*(1+self.wide)-1)) & 1) != 0
 
-		if self.binop in (BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC):
+		if self.binop in (BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.CMP):
 			state.flag_c = ((result >> (8*(1+self.wide))) & 1) != 0
 			# TODO; model flag_v
 
 		print("binop(", self.wide, ", ", self.binop, ", ", hex(arg1), ", ", hex(arg2), ") =", hex(result))
 
-		state.set_dest(dest, result)
+		if update_dest: state.set_dest(dest, result)
 		state.step_pc()
 
 	def encode(self):

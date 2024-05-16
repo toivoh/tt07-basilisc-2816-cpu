@@ -140,14 +140,14 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 						jump = 1;
 						cls = CLASS_MOV;
 						if (wide) begin
-	//							111111
-	//							5432109876543210
-							//  000100000ziiiiii	mov pc, [zp]
+//								111111
+//								5432109876543210
+//								000100000ziiiiii	mov pc, [zp]
 							// Should be all set?
 						end else if (z == 0) begin
-	//							111111
-	//							5432109876543210
-							//  0010000000iiiiii	mov pc, src
+//								111111
+//								5432109876543210
+//								0010000000iiiiii	mov pc, src
 							wide = 1;
 							use_zp = 0;
 						end
@@ -178,6 +178,20 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			src1_from_pc = 1;
 			use_imm8 = 1;
 		end
+	end
+
+	reg [2:0] binop;
+	reg update_dest;
+	always @(*) begin
+		binop = aaa;
+		update_dest = 1;
+		/*
+		if (cls == CLASS_ALU && binop == `OP_MOV) begin
+			// cmp
+			binop = `OP_SUB;
+			update_dest = 0;
+		end
+		*/
 	end
 
 	wire [5:0] arg2_enc = imm6;
@@ -252,11 +266,11 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire [LOG2_NR-1:0] arg1_reg = r;
 
 	// TODO: proper logic to select op
-	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : ((cls == CLASS_MOV) ? `OP_MOV : aaa);
+	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : ((cls == CLASS_MOV) ? `OP_MOV : binop);
 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
 	wire update_other_flags = (cls == CLASS_ALU || cls == CLASS_SHIFT || cls == CLASS_INCDECZERO);
-	wire update_carry_flags = ((cls == CLASS_ALU && !aaa[`OP_BIT_NADD]) || cls == CLASS_SHIFT || cls == CLASS_INCDECZERO);
+	wire update_carry_flags = ((cls == CLASS_ALU && !binop[`OP_BIT_NADD]) || cls == CLASS_SHIFT || cls == CLASS_INCDECZERO);
 
 	wire [`DEST_BITS-1:0] dest = (branch || jump) ? `DEST_PC : ( ((d && !use_imm8) && (arg2_src == `SRC_MEM)) ? `DEST_MEM : `DEST_REG );
 	wire [LOG2_NR-1:0] reg_dest = arg1_reg;
@@ -275,7 +289,8 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.op(op), .dest(dest), .reg_dest(reg_dest), .src1_from_pc(src1_from_pc),
 		.src(src), .reg_src(reg_src), .src_sext2(src_sext2),
 		.addr_wide2(addr_wide2), .addr_op(addr_op), .addr_reg1(addr_reg1), .addr_src(addr_src), .reg_addr_src(addr_reg2),
-		.addr_src_sext2(addr_src_sext2), .autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
+		.addr_src_sext2(addr_src_sext2), .update_dest(update_dest),
+		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),
 		.imm_data_in(imm_data_in2), .next_imm_data(next_imm_data),

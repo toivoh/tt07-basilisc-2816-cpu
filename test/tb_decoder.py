@@ -57,6 +57,7 @@ async def test_decoder(dut):
 			wide = randbool()
 			# TODO: Test CMP, TEST
 			#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+			#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.MOV])
 			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
 			if opnum != BinopNum.MOV and randrange(4) == 0: # mov r, imm6 has no encoding; use mov r, imm8 instead
 				arg1, arg2 = rand_arg_reg(wide), rand_arg_imm6(wide)
