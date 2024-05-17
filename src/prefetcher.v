@@ -7,13 +7,15 @@
 
 `include "common.vh"
 
-module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IMM_BITS=8 ) (
+module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IMM_BITS=16 ) (
 		input wire clk, reset,
 
 		output wire [15:0] inst,
 		output wire inst_valid,
 		input wire inst_done,
 
+		input wire load_imm16,
+		output wire imm16_loaded,
 		output wire [IO_BITS-1:0] imm_data_out,
 		input wire next_imm_data,
 
@@ -98,9 +100,10 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 
 	// An instruction word leaves the prefetch stage when it enters the instruction register or is flushed, which happens when remove is high.
 	wire pre_discard = (num_flushed != 0);
-	assign remove = last_valid && (pre_discard || !inst_valid);
-	wire discard = remove && pre_discard;
-	wire load_inst_reg = remove && !pre_discard;
+	assign remove = last_valid && (pre_discard || !inst_valid || load_imm16);
+	wire discard =        remove && pre_discard;
+	wire load_inst_reg =  remove && !pre_discard && !inst_valid;
+	assign imm16_loaded = remove && !pre_discard && inst_valid;
 
 	always @(posedge clk) begin
 		if (reset) begin
@@ -108,6 +111,8 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 		end else if (load_inst_reg) begin
 			inst_reg_valid <= 1;
 			inst_reg <= last_entry;
+			imm_reg <= last_entry[IMM_BITS-1:0];
+		end else if (imm16_loaded) begin
 			imm_reg <= last_entry[IMM_BITS-1:0];
 		end else begin
 			if (inst_done) inst_reg_valid <= 0;
@@ -133,7 +138,7 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 			num_flushed <= 0;
 		end else begin
 			if (write_pc && pc_done) num_prefetched <= 1;
-			else num_prefetched <= num_prefetched + ({{(NP_BITS-1){1'b0}}, pc_done} - {{(NP_BITS-1){1'b0}}, load_inst_reg});
+			else num_prefetched <= num_prefetched + ({{(NP_BITS-1){1'b0}}, pc_done} - {{(NP_BITS-1){1'b0}}, load_inst_reg || imm16_loaded});
 
 			// Set num_flushed <= num_prefetched only once per pc write, before inst_done goes high.
 			if (write_pc && pc_start) num_flushed <= num_prefetched; // Assume that num_flushed = 0 when this happens; we have a valid instruction.

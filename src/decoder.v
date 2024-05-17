@@ -16,6 +16,8 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 		output wire reserve_tx,
 
+		output wire load_imm16,
+		input wire imm16_loaded,
 		input wire [NSHIFT-1:0] imm_data_in,
 		output wire next_imm_data,
 
@@ -246,14 +248,25 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				arg2_src = `SRC_MEM;
 				addr_reg1 = {arg2_enc[3:2], 1'b0};
 				addr_src = `SRC_IMM2;
-//			end else if (arg2_enc[3] == 1 || (arg2_enc[0] == 0)) begin
-			end else begin
+			end else if (arg2_enc[3] == 1 || (arg2_enc[0] == 0)) begin
+//			end else begin
 				// 001rrr	r8
 				// 000rr0	r16
 				arg2_src = `SRC_REG;
 				wide2 = !arg2_enc[3];
 				src_sext2 = !d; // d selects sext or zext
-			//end else begin
+			end else begin
+				// 000xy1
+				if (arg2_enc[2:1] == 0) begin
+					// imm16
+					arg2_src = `SRC_IMM16;
+				end
+				if (arg2_enc[2:1] == 1) begin
+					// [imm16]
+					arg2_src = `SRC_MEM;
+					addr_src = `SRC_IMM16;
+					addr_op = `OP_MOV;
+				end
 			end
 		end
 	end
@@ -276,7 +289,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire [LOG2_NR-1:0] reg_dest = arg1_reg;
 	wire [`SRC_BITS-1:0] src = arg2_src;
 	wire [LOG2_NR-1:0] reg_src = arg2_reg;
-	wire addr_wide2 = 0;
+	wire addr_wide2 = (addr_src == `SRC_IMM16);
 
 	wire [NSHIFT-1:0] imm_data_in2 = autoincdec ? {autoincdec_dir, 1'b1} : imm_data_in;
 	wire addr_just_reg1 = autoincdec && (autoincdec_dir == 0);
@@ -293,6 +306,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),
+		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data_in2), .next_imm_data(next_imm_data),
 		.reserve_tx(reserve_tx),
 

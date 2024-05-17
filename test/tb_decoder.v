@@ -50,9 +50,12 @@ module tb_decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2 ) ();
 
 	wire [$clog2(PAYLOAD_CYCLES)+1-1:0] tx_counter;
 
+	wire load_imm16;
+	wire imm16_loaded = load_imm16;
 	decoder #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) dec (
 		.clk(clk), .reset(reset),
 		.inst_valid(inst_valid), .inst(inst), .inst_done(inst_done),
+		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.next_imm_data(next_imm_data), .imm_data_in(imm_data_in),
 
 		.tx_command_valid(tx_command_valid), .tx_command(tx_command), .tx_command_started(tx_command_started), .tx_active(tx_active),

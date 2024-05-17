@@ -40,6 +40,8 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire use_cc,
 		input wire [`CC_BITS-1:0] cc,
 
+		output wire load_imm16,
+		input wire imm16_loaded,
 		input wire [NSHIFT-1:0] imm_data_in,
 		output wire next_imm_data,
 
@@ -74,6 +76,23 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire [NSHIFT-1:0] rx_pins
 	);
 
+	// Imm16 loading
+	// -------------
+	reg imm16_available;
+	wire need_addr;
+
+	wire need_imm16 = (src == `SRC_IMM16) || (need_addr && addr_src == `SRC_IMM16);
+	assign load_imm16 = need_imm16 && !imm16_available;
+	wire wait_for_imm16 = load_imm16;
+
+	always @(posedge clk) begin
+		if (reset || inst_done) begin
+			imm16_available <= 0;
+		end else if (imm16_loaded) begin
+			imm16_available <= 1;
+		end
+	end
+
 	// Evaluate condition code
 	// -----------------------
 	wire flag_c, flag_v, flag_s, flag_z;
@@ -98,7 +117,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	end
 
 	wire skip = use_cc && !cc_ok;
-	wire execute = inst_valid && !skip;
+	wire execute = inst_valid && !wait_for_imm16 && !skip;
 
 	// Stage and command progression
 	// -----------------------------
@@ -120,9 +139,9 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		end
 	end
 
-	assign inst_done = (op_done && data_stage) || skip;
+	assign inst_done = (op_done && data_stage) || (skip && !wait_for_imm16);
 
-	wire need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM); // Assume need_addr means that we send a read during the address stage
+	assign need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM); // Assume need_addr means that we send a read during the address stage
 	wire addr_stage = (stage == 0) && need_addr;
 	wire data_stage = !addr_stage;
 
@@ -201,7 +220,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// Should we double r8 in [r16 + r8] for 16 bit wide operations?
 	// SRC_IMM2 case also captures autoincrement/decrement
 	// TODO: Which pc operations should we double arg2 for?
-	wire double_arg2 = (addr_stage && wide && (addr_src == `SRC_IMM7 || addr_src == `SRC_IMM2)) || (write_pc && curr_src_imm);
+	wire double_arg2 = (addr_stage && wide && (addr_src == `SRC_IMM7 || addr_src == `SRC_IMM2)) || (write_pc && curr_src_imm && (curr_src != `SRC_IMM16));
 	//wire double_arg2 = addr_stage && wide && !addr_wide2; // double addr_arg2 for most address calculations
 
 	wire [2:0] arg2_limit_length = {(addr_src == `SRC_IMM7) && addr_stage, (src == `SRC_IMM6) && data_stage, (addr_src == `SRC_IMM2) && addr_stage};

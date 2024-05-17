@@ -44,29 +44,39 @@ async def test_cpu0(dut):
 		mem = [0 for i in range(32768)]
 		pc = 1
 
+		def encode(inst):
+			nonlocal pc
+			for w in inst.encode():
+				mem[pc] = w; pc += 1
+
+		if False:
+			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0xe4a5)))
+			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgMemImm16(True, 0xbcde)))
+			mem[0xbcde>>1] = 0xe4a5
+
 		# Sequence of instructions to make a prefetch be ongoing when the PC read starts
-		inst = Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, 0)); mem[pc] = inst.encode(); pc += 1
-		inst = Binop(BinopNum.SUB, ArgMemR16PlusImm2(True, 0, 0), ArgReg(True, 0)); mem[pc] = inst.encode(); pc += 1
-		inst = Binop(BinopNum.MOV, ArgReg(False, 0), ArgReg(False, 0)); mem[pc] = inst.encode(); pc += 1
+		encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, 0)))
+		encode(Binop(BinopNum.SUB, ArgMemR16PlusImm2(True, 0, 0), ArgReg(True, 0)))
+		encode(Binop(BinopNum.MOV, ArgReg(False, 0), ArgReg(False, 0)))
 		# PC read
-		#inst = Binop(BinopNum.MOV, ArgReg(True, 0), ArgPCPlusImm8(True, -128)); mem[pc] = inst.encode(); pc += 1
+		#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgPCPlusImm8(True, -128)))
 		# Branch
-		inst = Branch(4+1, cc=dut.CC_Z.value); mem[pc] = inst.encode(); pc += 1
+		encode(Branch(4+1, cc=dut.CC_Z.value))
 		for i in range(4): mem[pc] = 256+i; pc += 1
 		# Untaken branch
-		inst = Branch(4+1, cc=dut.CC_NZ.value); mem[pc] = inst.encode(); pc += 1
+		encode(Branch(4+1, cc=dut.CC_NZ.value))
 
 		if True:
 			# Indirect jump: jump pc, sext(r8)
 			target_pc = pc + 8
-			inst = Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, 2*target_pc)); mem[pc] = inst.encode(); pc += 1
-			inst = Jump(ArgSextReg(True, 0)); mem[pc] = inst.encode(); pc += 1
+			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, 2*target_pc)))
+			encode(Jump(ArgSextReg(True, 0)))
 			while pc < target_pc:
 				mem[pc] = 512+pc; pc += 1
 		if False:
 			# Indirect jump: jump pc, [zp]
 			target_pc = pc + 8
-			inst = Jump(ArgMemZP(True, 2*(pc+1))); mem[pc] = inst.encode(); pc += 1
+			encode(Jump(ArgMemZP(True, 2*(pc+1))))
 			mem[pc] = 2*target_pc; pc += 1
 			while pc < target_pc:
 				mem[pc] = 768+pc; pc += 1
@@ -75,22 +85,16 @@ async def test_cpu0(dut):
 
 
 		for i in range(4):
-			inst = Binop(BinopNum.MOV, ArgReg(True, 2*i), ArgImm8(True, ~i))
-			mem[pc] = inst.encode(); pc += 1
-		inst = Binop(BinopNum.MOV, ArgReg(False, 3), ArgImm8(False, 0xfd - 256))
-		mem[pc] = inst.encode(); pc += 1
-		inst = Binop(BinopNum.MOV, ArgReg(True, 0), ArgMemR16PlusImm2(True, 2, 0))
-		mem[pc] = inst.encode(); pc += 1
+			encode(Binop(BinopNum.MOV, ArgReg(True, 2*i), ArgImm8(True, ~i)))
+		encode(Binop(BinopNum.MOV, ArgReg(False, 3), ArgImm8(False, 0xfd - 256)))
+		encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgMemR16PlusImm2(True, 2, 0)))
 		mem[0xfdfe>>1] = 0xa5e4
-		#inst = Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 2, 6), ArgReg(True, 2))
-		inst = Binop(BinopNum.ADD, ArgMemR16PlusImm2(True, 2, 6), ArgReg(True, 2))
-		mem[pc] = inst.encode(); pc += 1
+		#encode(Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 2, 6), ArgReg(True, 2))
+		encode(Binop(BinopNum.ADD, ArgMemR16PlusImm2(True, 2, 6), ArgReg(True, 2)))
 		mem[0xfe04>>1] = 0x100 - 0x002
-		inst = Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 2, 4), ArgReg(True, 2))
-		mem[pc] = inst.encode(); pc += 1
+		encode(Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 2, 4), ArgReg(True, 2)))
 		for i in range(2, 8):
-			inst = Binop(BinopNum.MOV, ArgReg(False, i), ArgImm8(False, i**2))
-			mem[pc] = inst.encode(); pc += 1
+			encode(Binop(BinopNum.MOV, ArgReg(False, i), ArgImm8(False, i**2)))
 		#for i in range(pc): print("mem[", i ,"] = ", hex(mem[i]))
 
 		ram_emu = RAMEmulator(mem, delay=13)
@@ -149,20 +153,28 @@ async def test_cpu(dut):
 	instructions = []
 	pcs = []
 	jump_flags = []
+	is_opcode = []
 	last_addr = None
 	num_flushed = 0
 
 	def exec(inst):
+		is_opcode.append(True)
 		pcs.append(state.pc)
 		jump_flags.append(state.jumped)
 		inst.execute(state)
-		instructions.append(inst.encode())
+		encoded = inst.encode()
+		instructions.extend(encoded)
+		for i in range(1, len(encoded)):
+			pcs.append((pcs[-1] + 2) & 0xffff)
+			jump_flags.append(False)
+			is_opcode.append(False)
 
 	def get_next_inst(header, addr, jumped):
 		nonlocal pos, last_addr, num_flushed
 		assert header == TX_HEADER_READ_16 # Check that the fetch is a 16 bit read
 
 		#print((pos, addr, pcs[pos], hex(instructions[pos])))
+		#print("pos = ", pos, "addr = ", addr, "pcs[pos] = ", pcs[pos], "jumped = ", jumped, "jump_flags[pos] = ", jump_flags[pos], "is_opcode[pos] = ", is_opcode[pos])
 
 		want_jump = jump_flags[pos]
 		assert (not jumped) or want_jump
@@ -185,7 +197,7 @@ async def test_cpu(dut):
 		last_addr = addr
 		return (RX_SB_READ_16, inst)
 
-	ram_emu = MockRAMEmulator(delay=1, alt_responder=get_next_inst)
+	ram_emu = MockRAMEmulator(delay=13, alt_responder=get_next_inst)
 	state.ram_emu = ram_emu
 
 	min_jump = 1
@@ -294,7 +306,7 @@ async def test_cpu(dut):
 
 	#print("pcs = ", pcs)
 
-	for i in range(128*n_tests):
+	for i in range(200*n_tests):
 		#tx, tx_fetch = dut.tx_pins.value.integer, dut.tx_fetch.value.integer
 		uo_out = dut.uo_out.value.integer
 		tx = uo_out & 3
@@ -308,6 +320,7 @@ async def test_cpu(dut):
 
 		if pos == len(instructions):
 			print("Reached last instruction in", i, "cycles")
+			print(i/len(instructions), "cycles/instruction word")
 			break
 
 		await ClockCycles(dut.clk, 1)

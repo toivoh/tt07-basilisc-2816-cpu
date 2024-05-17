@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Fri May 10 13:49:04 2024
+[*] Fri May 17 06:37:44 2024
 [*]
-[dumpfile] "/home/toivo/code/tinytapeout/tt-repo/cpu-test/tt/src/tb_decoder.vcd"
-[dumpfile_mtime] "Fri May 10 13:41:55 2024"
-[dumpfile_size] 9774372
-[savefile] "/home/toivo/code/tinytapeout/tt-repo/cpu-test/tt/src/tb_decoder.gtkw"
+[dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.vcd"
+[dumpfile_mtime] "Fri May 17 05:46:51 2024"
+[dumpfile_size] 9964800
+[savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.gtkw"
 [timestart] 0
-[size] 2064 1143
+[size] 2988 1720
 [pos] -1 -1
-*-23.000000 359910000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 37280000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb_decoder.
 [treeopen] tb_decoder.dec.
 [treeopen] tb_decoder.dec.sched.
 [sst_width] 297
 [signals_width] 246
 [sst_expanded] 1
-[sst_vpaned_height] 349
+[sst_vpaned_height] 554
 @28
 tb_decoder.reset
 tb_decoder.clk
@@ -28,6 +28,13 @@ tb_decoder.imm_data[15:0]
 @28
 tb_decoder.imm_data_in[1:0]
 tb_decoder.next_imm_data
+tb_decoder.dec.load_imm16
+@29
+tb_decoder.dec.imm16_loaded
+@200
+-
+@22
+tb_decoder.inst[15:0]
 @200
 -
 @22
@@ -59,7 +66,6 @@ tb_decoder.dec.mdz[2:0]
 @200
 -
 @28
-tb_decoder.dec.arg2_src[2:0]
 tb_decoder.dec.arg2_reg[2:0]
 @200
 -
@@ -85,14 +91,9 @@ tb_decoder.dec.cls[2:0]
 @200
 -Scheduler
 @28
-tb_decoder.dec.sched.src[2:0]
 tb_decoder.dec.sched.need_addr
 @200
 -
-@28
-tb_decoder.dec.sched.addr_lsb
-tb_decoder.dec.sched.wait_for_2nd_mem_half
-@200
 -
 @28
 tb_decoder.dec.sched.send_command
@@ -128,7 +129,6 @@ tb_decoder.dec.sched.alu.arg2_6bit
 @28
 tb_decoder.dec.sched.alu.flag_c
 tb_decoder.dec.sched.alu.flag_s
-@29
 tb_decoder.dec.sched.alu.flag_z
 [pattern_trace] 1
 [pattern_trace] 0

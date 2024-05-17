@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Wed May 15 06:19:19 2024
+[*] Fri May 17 06:37:40 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.vcd"
-[dumpfile_mtime] "Wed May 15 06:18:15 2024"
-[dumpfile_size] 22619657
+[dumpfile_mtime] "Fri May 17 06:36:01 2024"
+[dumpfile_size] 23530460
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.gtkw"
-[timestart] 684930000
-[size] 2454 1597
+[timestart] 10487550000
+[size] 3840 2041
 [pos] -1 -1
-*-23.000000 718810000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 10587660000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.cpu.
@@ -18,7 +18,7 @@
 [sst_width] 297
 [signals_width] 268
 [sst_expanded] 1
-[sst_vpaned_height] 507
+[sst_vpaned_height] 663
 @28
 tb.rst_n
 tb.clk
@@ -51,8 +51,12 @@ tb.r7[7:0]
 @200
 -
 @28
+tb.top.cpu.pref.load_imm16
+@22
+tb.top.cpu.pref.imm_reg[15:0]
+@28
 tb.top.cpu.pref.inst_reg_valid
-@23
+@22
 tb.top.cpu.pref.inst_reg[15:0]
 @200
 -
@@ -83,6 +87,11 @@ tb.top.cpu.pref.update_pc
 tb.top.cpu.pref.ext_pc_next
 @200
 -
+@28
+tb.top.cpu.pref.pc_done
+tb.top.cpu.pref.load_inst_reg
+@29
+tb.top.cpu.pref.imm16_loaded
 @28
 tb.top.cpu.pref.num_prefetched[1:0]
 tb.top.cpu.pref.num_flushed[1:0]

@@ -24,16 +24,23 @@
 `define DEST_MEM 2'd1
 `define DEST_PC  2'd2
 
-`define SRC_BITS 3
-`define SRC_BIT_IMM 2
-`define SRC_REG      3'd0
-`define SRC_MEM      3'd1
+`define SRC_BITS 4
+`define SRC_BIT_IMM 3
+//`define SRC_REG      3'd0
+//`define SRC_MEM      3'd1
 //`define SRC_REG_ZEXT 3'd2
 //`define SRC_REG_SEXT 3'd3
-`define SRC_IMM2     3'd4
-`define SRC_IMM6     3'd5
-`define SRC_IMM7     3'd6
-`define SRC_IMM8     3'd7
+//`define SRC_IMM2     3'd4
+//`define SRC_IMM6     3'd5
+//`define SRC_IMM7     3'd6
+//`define SRC_IMM8     3'd7
+`define SRC_REG      4'd0
+`define SRC_MEM      4'd1
+`define SRC_IMM2     4'd8
+`define SRC_IMM6     4'd9
+`define SRC_IMM7     4'd10
+`define SRC_IMM8     4'd11
+`define SRC_IMM16    4'd12
 
 
 `define CC_BITS 4

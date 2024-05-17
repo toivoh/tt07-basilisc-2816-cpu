@@ -92,11 +92,12 @@ async def test_decoder(dut):
 			inst.execute(state)
 
 			encoding = inst.encode()
-			dut.inst.value = encoding
-			dut.imm_data.value = encoding
+			assert 1 <= len(encoding) <= 2
+			dut.inst.value = encoding[0]
+			dut.imm_data.value = encoding[-1]
 			dut.inst_valid.value = 1
 
-			for i in range(32):
+			for i in range(48):
 				tx = dut.tx_pins.value.integer
 				rx = ram_emu.step(tx)
 				dut.rx_pins.value = rx

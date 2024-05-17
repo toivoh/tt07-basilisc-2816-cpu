@@ -48,7 +48,7 @@ class State:
 		self.pc = pc & 0xffff
 
 	def step_pc(self, step=1, jump=False):
-		assert step==1 or jump
+		assert 1 <= step <= 2 or jump
 		self.jumped = jump
 		self.pc = (self.pc + 2*step) & 0xffff
 
@@ -100,6 +100,9 @@ class Arg:
 	def get_dest(self, state):
 		return self
 
+	def get_extra_words(self):
+		return 0
+
 	def apply_side_effect(self, state):
 		pass
 
@@ -129,7 +132,7 @@ class ArgMemR16PlusR8(ArgMem):
 		return (state.get_reg(self.reg16, True) + state.get_reg(self.reg8, False)) & 0xffff
 		#return (state.get_reg(self.reg16, True) + (state.get_reg(self.reg8, False) << self.wide)) & 0xffff
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		return 32 | (self.reg16 << 2) | self.reg8
 
 class ArgMemR16IncDec(ArgMem):
@@ -148,7 +151,7 @@ class ArgMemR16IncDec(ArgMem):
 	def apply_side_effect(self, state):
 		state.set_reg(self.reg16, state.get_reg(self.reg16, True) + ((-1 if self.dec else 1) << self.wide), True)
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		reg8 = self.reg16 | self.dec
 		return 32 | (self.reg16 << 2) | reg8
 
@@ -179,7 +182,7 @@ class ArgMemR16PlusImm2(ArgMem):
 	def get_addr(self, state):
 		return (state.get_reg(self.reg16, True) + self.imm2) & 0xffff
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		return 16 | (self.reg16 << 1) | (self.imm2 >> self.wide)
 
 class ArgMemZP(ArgMem):
@@ -196,9 +199,29 @@ class ArgMemZP(ArgMem):
 	def get_addr(self, state=None):
 		return self.addr
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		assert T == ArgMemZP
 		return (self.addr >> self.wide) & 127
+
+class ArgMemImm16(ArgMem):
+	"""imm16"""
+	def __init__(self, wide, addr):
+		assert 0 <= addr <= 65535 # TODO: better way?
+		super().__init__(wide)
+		self.addr = addr
+
+	def get_addr(self, state=None):
+		return self.addr
+
+	def get_extra_words(self):
+		return 1
+
+	def encode(self, is_dest=False, T=None, extra_dest=None):
+		assert isinstance(extra_dest, list)
+		assert len(extra_dest) == 0
+		extra_dest.append(self.addr)
+		return 3
+
 
 class ArgReg(Arg):
 	"""r8/r16"""
@@ -215,7 +238,7 @@ class ArgReg(Arg):
 	def get_value(self, state):
 		return state.get_reg(self.reg, self.wide)
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		if self.wide: return self.reg
 		else:         return 8 | self.reg
 
@@ -233,7 +256,7 @@ class ArgSextReg(Arg):
 	def get_value(self, state):
 		return state.get_reg(self.reg, False, sext=True)
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		assert not is_dest
 		return 8 | self.reg
 
@@ -251,7 +274,7 @@ class ArgZextReg(Arg):
 	def get_value(self, state):
 		return state.get_reg(self.reg, False)
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		assert T == ArgZextReg
 		assert not is_dest
 		return 8 | self.reg
@@ -272,7 +295,7 @@ class ArgImm6(Arg):
 	def get_value(self, state=None):
 		return self.value
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		assert not is_dest
 		assert T == ArgImm6
 		return self.value & 63
@@ -288,10 +311,31 @@ class ArgImm8(Arg):
 	def get_value(self, state=None):
 		return self.value
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		assert not is_dest
 		assert T == ArgImm8
 		return self.value & 255
+
+class ArgImm16(Arg):
+	"""imm16"""
+	def __init__(self, wide, value):
+		if wide: assert -32768 <= value <= 65535 # TODO: better way?
+		else:    assert -128 <= value <= 255
+		super().__init__(wide)
+		self.value = value
+
+	def get_value(self, state=None):
+		return self.value
+
+	def get_extra_words(self):
+		return 1
+
+	def encode(self, is_dest=False, T=None, extra_dest=None):
+		assert not is_dest
+		assert isinstance(extra_dest, list)
+		assert len(extra_dest) == 0
+		extra_dest.append(self.value & 0xffff)
+		return 1
 
 # Temporary: Might be removed, or encoding changed
 class ArgPCPlusImm8(Arg):
@@ -307,7 +351,7 @@ class ArgPCPlusImm8(Arg):
 		assert False # not implemented yet
 		return state.get_pc() + self.offset
 
-	def encode(self, is_dest=False, T=None):
+	def encode(self, is_dest=False, T=None, extra_dest=None):
 		assert not is_dest
 		assert T == ArgPCPlusImm8
 		return self.offset & 255
@@ -321,7 +365,7 @@ class ArgPCPlusImm8(Arg):
 #	def get_value(self, state):
 #		return state.get_pc()
 #
-#	def encode(self, is_dest=False, T=None):
+#	def encode(self, is_dest=False, T=None, extra_dest=None):
 #		assert not is_dest
 #		return 7
 
@@ -393,10 +437,12 @@ class Binop(Instruction):
 		print("binop(", self.wide, ", ", self.binop, ", ", hex(arg1), ", ", hex(arg2), ") =", hex(result))
 
 		if update_dest: state.set_dest(dest, result)
-		state.step_pc()
+		state.step_pc(1 + self.arg1.get_extra_words() + self.arg2.get_extra_words())
 
 	def encode(self):
 		assert 0 <= self.binop.value <= 7 or self.binop == BinopNum.MOV
+
+		extra = []
 
 #	111111
 #	5432109876543210
@@ -435,7 +481,8 @@ class Binop(Instruction):
 
 		if binop_form:
 			prefix = 1 if self.wide else 2 | (reg1&1)
-			return (prefix << 14) | (self.binop.value << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T)
+			enc = (prefix << 14) | (self.binop.value << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T, extra_dest=extra)
+			return [enc] + extra
 		else:
 			o = 1
 
@@ -455,7 +502,9 @@ class Binop(Instruction):
 
 			prefix = 1 if self.wide else 2 | (reg1&1)
 			#print((prefix, o, m, reg1, d, z, arg2.encode(is_dest=d), type(arg2)))
-			return (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T)
+			enc = (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T, extra_dest=extra)
+			return [enc] + extra
+
 
 class Jump(Instruction):
 	def __init__(self, arg):
@@ -482,16 +531,20 @@ class Jump(Instruction):
 		state.set_pc(arg)
 
 	def encode(self):
+		extra = []
 		if isinstance(self.arg, ArgMemZP):
 			# 111111
 			# 5432109876543210
 			# 000100000ziiiiii	mov pc, [zp]
-			return (1 << 12) | self.arg.encode(is_dest=False, T=ArgMemZP)
+			enc = (1 << 12) | self.arg.encode(is_dest=False, T=ArgMemZP, extra_dest=extra)
+			return [enc] + extra
+
 		else:
 			# 111111
 			# 5432109876543210
 			# 0010000000iiiiii	mov pc, src
-			return (1 << 13) | self.arg.encode(is_dest=False)
+			enc = (1 << 13) | self.arg.encode(is_dest=False, extra_dest=extra)
+			return [enc] + extra
 
 
 class Branch(Instruction):
@@ -519,7 +572,7 @@ class Branch(Instruction):
 #	5432109876543210
 #	0000ccccbbbbbbbb	2^12 branch
 
-		return (self.cc << 8) | (self.offset & 255)
+		return [(self.cc << 8) | (self.offset & 255)]
 
 
 def randbool():
@@ -550,20 +603,37 @@ def rand_arg_mem_r16imm2(wide):
 def rand_arg_mem_zp(wide):
 	return ArgMemZP(wide, randrange(128) << wide)
 
+def rand_arg_mem_imm16(wide):
+	return ArgMemImm16(wide, randrange(0x10000))
+
 def rand_arg_imm6(wide):
 	return ArgImm6(wide, randrange(-32, 32))
 
 def rand_arg_imm8(wide):
 	return ArgImm8(wide, randrange(-128, 128))
 
+def rand_arg_imm16(wide):
+	return ArgImm16(wide, randrange(0, 0x100 << (wide*8)))
+
+
 def rand_arg(wide, is_src=False, d_symmetry=True):
-	n = randrange(5+(1+d_symmetry)*(is_src and wide))
+	if False:
+		n = randrange(1 + is_src)
+		if n == 0: return rand_arg_mem_imm16(wide)
+		elif n == 1: return rand_arg_imm16(wide)
+		else: assert False
+
+	n = randrange(6+is_src+(1+d_symmetry)*(is_src and wide))
 	if   n == 0: return rand_arg_mem_r16r8(wide)
 	elif n == 1: return rand_arg_mem_r16incdec(wide)
 	elif n == 2: return rand_arg_mem_r16imm2(wide)
 	elif n == 3: return rand_arg_mem_zp(wide)
 	elif n == 4: return rand_arg_reg(wide)
+	elif n == 5: return rand_arg_mem_imm16(wide)
+	# is_src:
+	elif n == 6: return rand_arg_imm16(wide)
 	# is_src and wide:
-	elif n == 5: return rand_arg_sext_reg(wide)
-	elif n == 6: return rand_arg_zext_reg(wide)
+	elif n == 7: return rand_arg_sext_reg(wide)
+	# is_src and wide and d_symmetry:
+	elif n == 8: return rand_arg_zext_reg(wide)
 	else: assert False
