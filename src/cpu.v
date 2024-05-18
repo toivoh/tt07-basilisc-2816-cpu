@@ -38,7 +38,10 @@ module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, MAX_
 	always @(posedge clk) begin
 		if (!tx_active) curr_sc_tx <= sc_tx_wanted;
 	end
+
 	wire sc_tx = tx_active ? curr_sc_tx : sc_tx_wanted;
+	assign prefetch_idle = tx_active ? curr_sc_tx : block_prefetch;
+
 	wire pf_tx = !sc_tx;
 	assign tx_fetch = pf_tx || write_pc;
 	assign tx_jump = write_pc;
@@ -65,9 +68,6 @@ module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, MAX_
 		.rx_data_valid(rx_data_valid), .rx_done(rx_done), .rx_counter(rx_counter),
 		.tx_pins(tx_pins), .rx_pins(rx_pins)
 	);
-
-	// TODO: Could this be curr_sc_tx
-	assign prefetch_idle = !pf_tx;
 
 	// Transaction type FIFO
 	// ---------------------

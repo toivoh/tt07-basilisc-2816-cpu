@@ -4,6 +4,11 @@ echo "============="
 cat runs/wokwi/logs/synthesis/linter.log
 echo
 
+echo "Synthesis warnings"
+echo "=================="
+cat runs/wokwi/logs/synthesis/1-synthesis.warnings
+echo
+
 echo "Cell usage"
 echo "=========="
 #cat runs/wokwi/reports/synthesis/1-synthesis.AREA_0.stat.rpt
