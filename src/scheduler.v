@@ -25,6 +25,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire [`SRC_BITS-1:0] src,
 		input wire [LOG2_NR-1:0] reg_src,
 		input wire src_sext2,
+		input wire double_src2,
 		input wire update_dest,
 
 		input wire addr_wide2,
@@ -44,6 +45,8 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire imm16_loaded,
 		input wire [NSHIFT-1:0] imm_data_in,
 		output wire next_imm_data,
+
+		output wire addr_stage,
 
 		// PC control interface
 		output wire block_prefetch, write_pc_now, ext_pc_next, // ext_pc_next may only be high when prefetch_idle is
@@ -142,7 +145,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	assign inst_done = (op_done && data_stage) || (skip && !wait_for_imm16);
 
 	assign need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM); // Assume need_addr means that we send a read during the address stage
-	wire addr_stage = (stage == 0) && need_addr;
+	assign addr_stage = (stage == 0) && need_addr;
 	wire data_stage = !addr_stage;
 
 	// Stage properties
@@ -174,7 +177,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// but the timing is one cycle off we we set tx_reply_wanted = 0.
 	// TODO: Fix the timing issues related to that TX messages have one more cycle of header compared to RX messages,
 	// and reenable this.
-	assign tx_reply_wanted = !((dest == `DEST_MEM) && (op == `OP_MOV));
+	assign tx_reply_wanted = !((dest == `DEST_MEM) && (op == `OP_MOV /*|| external_arg2*/)) || write_pc;
 
 	assign tx_command = send_read ? `TX_HEADER_READ_16 : (wide ? `TX_HEADER_WRITE_16 : `TX_HEADER_WRITE_8);
 
@@ -220,12 +223,12 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// Should we double r8 in [r16 + r8] for 16 bit wide operations?
 	// SRC_IMM2 case also captures autoincrement/decrement
 	// TODO: Which pc operations should we double arg2 for?
-	wire double_arg2 = (addr_stage && wide && (addr_src == `SRC_IMM7 || addr_src == `SRC_IMM2)) || (write_pc && curr_src_imm && (curr_src != `SRC_IMM16));
+	wire double_arg2 = (addr_stage && wide && (addr_src == `SRC_IMM7 || addr_src == `SRC_IMM2)) || (write_pc && curr_src_imm && (curr_src != `SRC_IMM16)) || (data_stage && double_src2);
 	//wire double_arg2 = addr_stage && wide && !addr_wide2; // double addr_arg2 for most address calculations
 
-	wire [2:0] arg2_limit_length = {(addr_src == `SRC_IMM7) && addr_stage, (src == `SRC_IMM6) && data_stage, (addr_src == `SRC_IMM2) && addr_stage};
+	wire [2:0] arg2_limit_length = {(addr_src == `SRC_IMM7) && addr_stage, (src == `SRC_IMM6) && data_stage, (addr_src == `SRC_IMM2) && addr_stage || (src == `SRC_IMM2 && data_stage)};
 	wire output_scan_out = addr_stage && addr_just_reg1;
-	wire external_arg1 = src1_from_pc;
+	wire external_arg1 = data_stage && src1_from_pc;
 
 	ALU #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) alu (
 		.clk(clk), .reset(reset),

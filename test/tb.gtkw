@@ -1,24 +1,25 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Fri May 17 06:37:40 2024
+[*] Sat May 18 15:03:21 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.vcd"
-[dumpfile_mtime] "Fri May 17 06:36:01 2024"
-[dumpfile_size] 23530460
+[dumpfile_mtime] "Sat May 18 15:02:08 2024"
+[dumpfile_size] 24169529
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.gtkw"
-[timestart] 10487550000
-[size] 3840 2041
+[timestart] 1058310000
+[size] 2153 1128
 [pos] -1 -1
-*-23.000000 10587660000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 203100000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.cpu.
 [treeopen] tb.top.cpu.dec.
+[treeopen] tb.top.cpu.dec.sched.
 [treeopen] tb.top.cpu.mem_if.
 [sst_width] 297
 [signals_width] 268
 [sst_expanded] 1
-[sst_vpaned_height] 663
+[sst_vpaned_height] 344
 @28
 tb.rst_n
 tb.clk
@@ -38,6 +39,11 @@ tb.top.cpu.sc_tx_command_valid
 tb.top.cpu.tx_command_started
 @200
 -
+@28
+tb.top.cpu.dec.sched.tx_data_next
+tb.top.cpu.tx_reply_wanted
+@200
+-
 -
 @22
 tb.r0[7:0]
@@ -46,12 +52,15 @@ tb.r2[7:0]
 tb.r3[7:0]
 tb.r4[7:0]
 tb.r5[7:0]
+@23
 tb.r6[7:0]
+@22
 tb.r7[7:0]
 @200
 -
 @28
 tb.top.cpu.pref.load_imm16
+tb.top.cpu.pref.next_imm_data
 @22
 tb.top.cpu.pref.imm_reg[15:0]
 @28
@@ -63,6 +72,13 @@ tb.top.cpu.pref.inst_reg[15:0]
 -decoder
 @28
 tb.top.cpu.dec.jump
+tb.top.cpu.dec.need_pre_stage
+tb.top.cpu.dec.pre_stage
+@200
+-
+@28
+tb.top.cpu.dec.addr_reg1[2:0]
+tb.top.cpu.dec.src1_from_pc
 @200
 -
 -scheduler
@@ -72,11 +88,61 @@ tb.top.cpu.dec.sched.data_stage
 @200
 -
 @28
+tb.top.cpu.dec.inst_done
 tb.top.cpu.dec.sched.inst_done
 tb.top.cpu.dec.sched.op_done
 tb.top.cpu.dec.sched.tx_command_valid
 @200
 -
+@28
+tb.top.cpu.dec.sched.imm_data_in[1:0]
+@200
+-
+@28
+tb.top.cpu.dec.block_prefetch
+tb.top.cpu.dec.prefetch_idle
+@200
+-
+@22
+tb.top.cpu.dec.sched.src[3:0]
+@200
+-
+@28
+tb.top.cpu.dec.sched.operation[2:0]
+@200
+-
+@28
+tb.top.cpu.dec.sched.external_arg1
+tb.top.cpu.dec.sched.reg1[2:0]
+tb.top.cpu.dec.sched.update_reg1
+@200
+-
+@28
+tb.top.cpu.dec.sched.external_arg2
+tb.top.cpu.dec.sched.reg2[2:0]
+@200
+-
+@28
+tb.top.cpu.dec.sched.pair_op
+tb.top.cpu.dec.sched.pair_op2
+@200
+-
+@28
+tb.top.cpu.dec.sched.sext2
+tb.top.cpu.dec.sched.addr_src_sext2
+tb.top.cpu.dec.sched.src_sext2
+@200
+-
+@28
+tb.top.cpu.dec.sched.arg2_limit_length[2:0]
+@200
+-
+@28
+tb.top.cpu.dec.sched.output_scan_out
+tb.top.cpu.dec.sched.update_carry_flags
+tb.top.cpu.dec.sched.update_other_flags
+tb.top.cpu.dec.sched.reverse_args
+@200
 -
 -prefetcher
 @22
@@ -90,9 +156,7 @@ tb.top.cpu.pref.ext_pc_next
 @28
 tb.top.cpu.pref.pc_done
 tb.top.cpu.pref.load_inst_reg
-@29
 tb.top.cpu.pref.imm16_loaded
-@28
 tb.top.cpu.pref.num_prefetched[1:0]
 tb.top.cpu.pref.num_flushed[1:0]
 @200
@@ -101,6 +165,28 @@ tb.top.cpu.pref.num_flushed[1:0]
 tb.top.cpu.pref.sreg_full
 @22
 tb.top.cpu.pref.sreg[15:0]
+@200
+-
+@28
+tb.top.cpu.pref.last_valid
+@22
+tb.top.cpu.pref.last_entry[15:0]
+@200
+-
+@28
+tb.top.cpu.pref.pc_data_out[1:0]
+@200
+-
+-ALU
+@28
+tb.top.cpu.dec.sched.alu.data_in1[1:0]
+tb.top.cpu.dec.sched.alu.data_in2[1:0]
+tb.top.cpu.dec.sched.alu.result[1:0]
+tb.top.cpu.dec.sched.alu.data_out[1:0]
+@200
+-
+@28
+tb.top.cpu.dec.sched.alu.arg2_2bit
 @200
 -
 -CPU

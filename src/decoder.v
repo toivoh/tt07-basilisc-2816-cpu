@@ -51,6 +51,29 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		input wire rx_done, // only high when receiving scheduler data
 		input wire [NSHIFT-1:0] rx_pins
 	);
+	wire addr_stage;
+
+	// Decoder stage progression
+	// =========================
+
+	reg stage;
+	reg need_pre_stage; // not a register
+
+	wire pre_stage = need_pre_stage && (stage == 0);
+	wire normal_stage = !pre_stage;
+
+	wire sc_inst_done;
+	assign inst_done = normal_stage && sc_inst_done;
+
+	always @(posedge clk) begin
+		if (reset || inst_done) stage <= 0;
+		else if (sc_inst_done) stage <= 1;
+	end
+
+
+	// Decoder
+	// =======
+
 	wire b8, e, m, d, z;
 	wire [2:0] aaa;
 	wire [1:0] rr;
@@ -79,6 +102,8 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire [3:0] cc = cccc;
 	wire use_imm6 = (mdz == 3'b101);
 	wire [1:0] idz_op = rr;
+
+	wire push_pc_plus4 = pre_stage; // only thing that pre_stage is used for so far.
 
 /*
 	111111
@@ -110,6 +135,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		branch = 0;
 		src1_from_pc = 0;
 		jump = 0;
+		need_pre_stage = 0;
 
 //				111111
 //				5432109876543210
@@ -139,19 +165,24 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				if (m == 1) use_imm8 = 1;
 				if ({m, d} == 2'b00) begin
 					if (rr == 0) begin
-						jump = 1;
+						jump = normal_stage;
 						cls = CLASS_MOV;
 						if (wide) begin
 //								111111
 //								5432109876543210
-//								000100000ziiiiii	mov pc, [zp]
+//								000100000ziiiiii	jump [zp] (mov pc, [zp])
 							// Should be all set?
-						end else if (z == 0) begin
+						end else begin
 //								111111
 //								5432109876543210
-//								0010000000iiiiii	mov pc, src
+//								0010000000iiiiii	jump src (mov pc, src)
+//								0010000001iiiiii	call src
 							wide = 1;
 							use_zp = 0;
+							need_pre_stage = z;
+
+							// needed for call
+							src1_from_pc = pre_stage;
 						end
 					end else begin
 						cls = CLASS_INCDECZERO;
@@ -234,13 +265,16 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			src_sext2 = 1;
 		end else begin
 			// Regular dest/src
-			if (arg2_enc[5] == 1) begin
+			if (arg2_enc[5] == 1 || push_pc_plus4) begin
 				// 1RRrrr	[r16 + r8]
-				// TODO: special cases when r16 + r8 overlap, maybe imm16 + r8 case too
+					// TODO: special cases when r16 + r8 overlap, maybe imm16 + r8 case too
 				arg2_src = `SRC_MEM;
-				addr_reg1 = {arg2_enc[4:3], 1'b0};
+				addr_reg1 = push_pc_plus4 ? `REG_INDEX_SP : {arg2_enc[4:3], 1'b0};
 				//addr_src = `SRC_REG;
-				autoincdec = (addr_reg1[2:1] == addr_reg2[2:1]);
+
+				if (push_pc_plus4) arg2_src = `SRC_IMM2; // override
+				autoincdec = (addr_reg1[2:1] == addr_reg2[2:1]) || push_pc_plus4;
+
 				addr_src = autoincdec ? `SRC_IMM2 : `SRC_REG;
 				addr_src_sext2 = autoincdec;
 			end else if (arg2_enc[4] == 1) begin
@@ -273,7 +307,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire [LOG2_NR-1:0] addr_reg2 = arg2_enc[2:0];
 	wire [LOG2_NR-1:0] arg2_reg = arg2_enc[2:0];
-	wire autoincdec_dir = arg2_enc[0];
+	wire autoincdec_dir = arg2_enc[0] || push_pc_plus4; // 1 = negative
 
 
 	wire [LOG2_NR-1:0] arg1_reg = r;
@@ -285,30 +319,37 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire update_other_flags = (cls == CLASS_ALU || cls == CLASS_SHIFT || cls == CLASS_INCDECZERO);
 	wire update_carry_flags = ((cls == CLASS_ALU && !binop[`OP_BIT_NADD]) || cls == CLASS_SHIFT || cls == CLASS_INCDECZERO);
 
-	wire [`DEST_BITS-1:0] dest = (branch || jump) ? `DEST_PC : ( ((d && !use_imm8) && (arg2_src == `SRC_MEM)) ? `DEST_MEM : `DEST_REG );
+	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : ( (((d && !use_imm8) && (arg2_src == `SRC_MEM)) || push_pc_plus4) ? `DEST_MEM : `DEST_REG );
 	wire [LOG2_NR-1:0] reg_dest = arg1_reg;
 	wire [`SRC_BITS-1:0] src = arg2_src;
 	wire [LOG2_NR-1:0] reg_src = arg2_reg;
 	wire addr_wide2 = (addr_src == `SRC_IMM16);
 
-	wire [NSHIFT-1:0] imm_data_in2 = autoincdec ? {autoincdec_dir, 1'b1} : imm_data_in;
+	wire double_src2 = push_pc_plus4; // There are other cases when the scheduler sets double_arg2 based on its inputs.
+
+	wire sc_next_imm_data;
+	assign next_imm_data = sc_next_imm_data && normal_stage; // Don't consume imm data during pre-stage
+
+	wire [NSHIFT-1:0] imm_data_in2 = (autoincdec && addr_stage) ? {autoincdec_dir, 1'b1} : (push_pc_plus4 ? 2'd2 : imm_data_in);
 	wire addr_just_reg1 = autoincdec && (autoincdec_dir == 0);
+
 	wire use_cc = branch;
 
 	scheduler #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
 		.clk(clk), .reset(reset),
-		.inst_valid(inst_valid), .inst_done(inst_done),
+		.inst_valid(inst_valid), .inst_done(sc_inst_done),
 		.wide(wide), .wide2(wide2),
 		.op(op), .dest(dest), .reg_dest(reg_dest), .src1_from_pc(src1_from_pc),
-		.src(src), .reg_src(reg_src), .src_sext2(src_sext2),
+		.src(src), .reg_src(reg_src), .src_sext2(src_sext2), .double_src2(double_src2),
 		.addr_wide2(addr_wide2), .addr_op(addr_op), .addr_reg1(addr_reg1), .addr_src(addr_src), .reg_addr_src(addr_reg2),
 		.addr_src_sext2(addr_src_sext2), .update_dest(update_dest),
 		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),
 		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
-		.imm_data_in(imm_data_in2), .next_imm_data(next_imm_data),
+		.imm_data_in(imm_data_in2), .next_imm_data(sc_next_imm_data),
 		.reserve_tx(reserve_tx),
+		.addr_stage(addr_stage),
 
 		.block_prefetch(block_prefetch), .write_pc_now(write_pc), .ext_pc_next(ext_pc_next), .comp_counter(comp_counter),
 		.prefetch_idle(prefetch_idle), .pc_data_in(pc_data_in), .pc_data_out(pc_data_out),

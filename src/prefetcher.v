@@ -138,7 +138,7 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 			num_flushed <= 0;
 		end else begin
 			if (write_pc && pc_done) num_prefetched <= 1;
-			else num_prefetched <= num_prefetched + ({{(NP_BITS-1){1'b0}}, pc_done} - {{(NP_BITS-1){1'b0}}, load_inst_reg || imm16_loaded});
+			else num_prefetched <= num_prefetched + ({{(NP_BITS-1){1'b0}}, pc_done && update_pc} - {{(NP_BITS-1){1'b0}}, load_inst_reg || imm16_loaded});
 
 			// Set num_flushed <= num_prefetched only once per pc write, before inst_done goes high.
 			if (write_pc && pc_start) num_flushed <= num_prefetched; // Assume that num_flushed = 0 when this happens; we have a valid instruction.

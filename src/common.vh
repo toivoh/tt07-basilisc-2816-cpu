@@ -87,6 +87,9 @@
 `define CC_LE  `CC_NG
 
 
+`define REG_INDEX_SP 6
+
+
 // CPU module assumes that only TX_HEADER_READ_16 gets a response
 `define TX_CMD_BITS 2
 `define TX_HEADER_READ_16  2'd0

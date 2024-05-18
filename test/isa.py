@@ -14,6 +14,8 @@ REG_BITS_MASK = (1 << REG_BITS) - 1
 PAIR_BITS_MASK = (1 << PAIR_BITS) - 1
 NREGS = 1 << LOG2_NR
 
+REG_INDEX_SP = 6
+
 
 def szext(value, pair=False, sext=False):
 	if pair: return value
@@ -507,14 +509,22 @@ class Binop(Instruction):
 
 
 class Jump(Instruction):
-	def __init__(self, arg):
+	def __init__(self, arg, call=False):
 		assert isinstance(arg, Arg)
 		assert arg.wide
 
 		super().__init__()
 		self.arg = arg
+		self.call = call
 
 	def execute(self, state):
+		if self.call:
+			push_addr  = (state.get_reg(REG_INDEX_SP, pair=True) - 2) & 0xffff
+			push_value = (state.get_pc() + 4) & 0xffff
+			state.set_reg(REG_INDEX_SP, push_addr, pair=True)
+			state.ram_emu.read_mem(push_addr, True)
+			state.ram_emu.write_mem(push_addr, push_value, True)
+
 		# Calculate memory addresses before applying side effects (postincrement/predecrement)
 		if isinstance(self.arg, ArgMem): arg = self.arg.get_value(state)
 
@@ -526,13 +536,14 @@ class Jump(Instruction):
 		arg = arg & bitmask(True)
 
 
-		print("jump(", hex(arg), "=)")
+		print("call(" if self.call else "jump(", hex(arg), "=)")
 
 		state.set_pc(arg)
 
 	def encode(self):
 		extra = []
 		if isinstance(self.arg, ArgMemZP):
+			assert not self.call
 			# 111111
 			# 5432109876543210
 			# 000100000ziiiiii	mov pc, [zp]
@@ -542,8 +553,8 @@ class Jump(Instruction):
 		else:
 			# 111111
 			# 5432109876543210
-			# 0010000000iiiiii	mov pc, src
-			enc = (1 << 13) | self.arg.encode(is_dest=False, extra_dest=extra)
+			# 001000000ciiiiii	mov pc, src
+			enc = (1 << 13) | (self.call << 6) | self.arg.encode(is_dest=False, extra_dest=extra)
 			return [enc] + extra
 
 

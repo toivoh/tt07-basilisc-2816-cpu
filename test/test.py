@@ -53,6 +53,15 @@ async def test_cpu0(dut):
 			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0xe4a5)))
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgMemImm16(True, 0xbcde)))
 			mem[0xbcde>>1] = 0xe4a5
+		if True:
+			encode(Binop(BinopNum.MOV, ArgReg(True, 6), ArgImm8(True, -128)))
+			target_pc = pc + 8
+			#encode(Jump(ArgImm16(True, 2*target_pc)))
+			encode(Jump(ArgImm16(True, 2*target_pc), call=True))
+			while pc < target_pc:
+				mem[pc] = 2048+pc; pc += 1
+			print("target_pc = ", target_pc)
+			print("pc = ", pc)
 
 		# Sequence of instructions to make a prefetch be ongoing when the PC read starts
 		encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, 0)))
@@ -249,13 +258,14 @@ async def test_cpu(dut):
 
 
 	# Test different kinds of indirect jumps
-	exec(Jump(rand_arg_mem_r16r8(True)))
-	exec(Jump(rand_arg_mem_r16incdec(True)))
-	exec(Jump(rand_arg_mem_r16imm2(True)))
-	exec(Jump(rand_arg_mem_zp(True)))
-	exec(Jump(rand_arg_reg(True)))
-	exec(Jump(rand_arg_sext_reg(True)))
-	#exec(Jump(rand_arg_zext_reg(True))) # not supported
+	for call in (False, True):
+		exec(Jump(rand_arg_mem_r16r8(True), call=call))
+		exec(Jump(rand_arg_mem_r16incdec(True), call=call))
+		exec(Jump(rand_arg_mem_r16imm2(True), call=call))
+		exec(Jump(rand_arg_mem_zp(True), call=False)) # Doesn't support call
+		exec(Jump(rand_arg_reg(True), call=call))
+		exec(Jump(rand_arg_sext_reg(True), call=call))
+		#exec(Jump(rand_arg_zext_reg(True))) # not supported
 
 
 	for iter in range(n_tests):
@@ -267,8 +277,10 @@ async def test_cpu(dut):
 				inst = Branch(offset)
 				print("Branch ", inst.offset)
 			else:
-				inst = Jump(rand_arg(True, is_src=True, d_symmetry=False))
-				print("Jump")
+				arg = rand_arg(True, is_src=True, d_symmetry=False)
+				call = False if isinstance(arg, ArgMemZP) else randbool()
+				inst = Jump(arg, call=call)
+				print("Call" if call else "Jump")
 		else:
 			wide = randbool()
 			# TODO: Test CMP, TEST
