@@ -5,6 +5,7 @@
 runs
 tt_submission
 src/user_config.tcl
+src/config_patched.tcl
 test/sim_build
 test/__pycache__/
 test/results.xml
