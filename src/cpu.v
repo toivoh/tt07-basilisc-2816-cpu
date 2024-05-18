@@ -8,7 +8,7 @@
 `include "common.vh"
 
 // Currently, must have PREFETCH_QUEUE >= 2
-module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, MAX_OUTSTANDING=7, PREFETCH_QUEUE=3 ) (
+module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_QUEUE=3 ) (
 		input wire clk, reset,
 
 		output wire tx_fetch, // High when the message on tx_pins is for fetching instructions
@@ -17,6 +17,7 @@ module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, MAX_
 		input wire [IO_BITS-1:0] rx_pins
 	);
 	localparam NSHIFT = IO_BITS;
+	localparam MAX_OUTSTANDING = PREFETCH_QUEUE + 1; // scheduler can only have one outstanding read
 
 	// PC control interface
 	wire block_prefetch, write_pc, ext_pc_next;
@@ -46,8 +47,10 @@ module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, MAX_
 	assign tx_fetch = pf_tx || write_pc;
 	assign tx_jump = write_pc;
 
+	wire track_tx_command = (tx_command == `TX_HEADER_READ_16);
+
 	// Choose TX source
-	wire tx_command_valid              = (sc_tx ? sc_tx_command_valid : pf_tx_command_valid) && !full;
+	wire tx_command_valid              = (sc_tx ? sc_tx_command_valid : pf_tx_command_valid) && (!full || !track_tx_command);
 	wire [`TX_CMD_BITS-1:0] tx_command =  sc_tx ? sc_tx_command       : pf_tx_command;
 	wire [NSHIFT-1:0]       tx_data    =  sc_tx ? sc_tx_data          : pf_tx_data;
 
@@ -76,7 +79,7 @@ module CPU #( parameter LOG2_NR=3, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, MAX_
 
 	// Dont queue up write commands, since they don't get a response.
 	// TODO: Update if the set of commands that get a response changes.
-	wire add = tx_command_started && (tx_command == `TX_HEADER_READ_16);
+	wire add = tx_command_started && track_tx_command;
 	wire sc_tx_reply_wanted;
 	wire tx_reply_wanted = sc_tx ? sc_tx_reply_wanted : 1;
 	// If write_pc is high, the transaction is counted as a prefetch
