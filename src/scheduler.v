@@ -41,6 +41,9 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire use_cc,
 		input wire [`CC_BITS-1:0] cc,
 
+		input wire use_rotate, use_shr,
+		input wire [$clog2(REG_BITS*2/NSHIFT)-1:0] rotate_count,
+
 		output wire load_imm16,
 		input wire imm16_loaded,
 		input wire [NSHIFT-1:0] imm_data_in,
@@ -79,6 +82,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire rx_done, // only high when receiving scheduler data
 		input wire [NSHIFT-1:0] rx_pins
 	);
+	localparam ROTATE_COUNT_BITS = $clog2(REG_BITS*2/NSHIFT);
 
 	// Imm16 loading
 	// -------------
@@ -120,34 +124,48 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		end
 	end
 
-	wire skip = use_cc && !cc_ok;
-	wire execute = inst_valid && !wait_for_imm16 && !skip;
+	wire no_op;
+	wire skip = use_cc && !cc_ok || no_op;
+	wire skip_stage;
+	wire execute = inst_valid && !wait_for_imm16 && !skip && !skip_stage;
 
 	// Stage and command progression
 	// -----------------------------
+	localparam NUM_STAGES = 3;
+	localparam STAGE_BITS = $clog2(NUM_STAGES);
+	localparam STAGE0 = 0;
+	localparam STAGE1 = 1;
+	localparam STAGE_ROTATE = 2;
+	localparam STAGE_BIT_ROTATE = 1; // as long this bit is set, it is the rotate stage
+
 	wire op_done;
-	reg stage;
+	reg [STAGE_BITS-1:0] stage;
 	reg command_active; // Has the current command been started yet? It's not enough if there is a previous command active.
 
 	always @(posedge clk) begin
 		if (reset || inst_done) begin
-			stage <= 0;
+			stage <= STAGE0;
 		end else if (op_done) begin
-			stage <= 1;
+			stage <= STAGE1;
+		end else if (skip_stage) begin // TODO: Allow op_done to go into rotate stage too
+			stage <= STAGE_ROTATE;
 		end
 
-		if (reset || op_done) begin
+		if (reset || op_done) begin // Should reset at skip_stage too, but the rotate stage does not use command_active. TODO: Change if third stage needs command_active
 			command_active <= 0;
 		end else if (tx_command_started) begin
 			command_active <= 1;
 		end
 	end
 
-	assign inst_done = (op_done && data_stage) || (skip && !wait_for_imm16);
-
 	assign need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM); // Assume need_addr means that we send a read during the address stage
-	assign addr_stage = (stage == 0) && need_addr;
-	wire data_stage = !addr_stage;
+	assign addr_stage = (stage == STAGE0) && need_addr;
+	wire rotate_stage = stage[STAGE_BIT_ROTATE];
+	wire data_stage = !rotate_stage && !addr_stage;
+
+	assign inst_done = (op_done && (use_rotate ? rotate_stage : data_stage)) || (skip && !wait_for_imm16);
+
+	assign skip_stage = inst_valid && use_rotate && !rotate_stage; // TODO: Allow to run address and data stages for rotates
 
 	// Stage properties
 	// ----------------
@@ -164,7 +182,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire send_command = send_read || send_write;
 
 	wire [`SRC_BITS-1:0] curr_src = addr_stage ? addr_src : src;
-	wire curr_src_imm = curr_src[`SRC_BIT_IMM];
+	wire curr_src_imm = curr_src[`SRC_BIT_IMM] && !rotate_stage;
 
 	// Stage control outputs
 	// ---------------------
@@ -231,6 +249,10 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire output_scan_out = addr_stage && addr_just_reg1;
 	wire external_arg1 = data_stage && src1_from_pc;
 
+	wire rotate = rotate_stage;
+	wire do_shr = use_shr; // Has effect only when rotate is true
+	assign no_op = rotate_stage && rotate_count == '0;
+
 	ALU #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) alu (
 		.clk(clk), .reset(reset),
 		.op_done(op_done), .op_valid(alu_en),
@@ -240,6 +262,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.reg1(reg1), .reg2(reg2), .update_reg1(update_reg1), .reverse_args(reverse_args), .double_arg2(double_arg2),
 		.output_scan_out(output_scan_out),
 		.update_carry_flags(update_carry_flags && !block_flag_updates), .update_other_flags(update_other_flags && !block_flag_updates),
+		.rotate(rotate),.do_shr(do_shr),.rotate_count(rotate_count),
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(pc_data_in), .data_in2(data_in), .data_out(data_out),
 		.counter(comp_counter)

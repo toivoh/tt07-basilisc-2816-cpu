@@ -54,7 +54,7 @@ module tb_decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2 ) ();
 	wire imm16_loaded = load_imm16;
 	decoder #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) dec (
 		.clk(clk), .reset(reset),
-		.inst_valid(inst_valid), .inst(inst), .inst_done(inst_done),
+		.inst_valid(inst_valid), .inst(inst), .inst_done(inst_done), .imm_full(imm_data),
 		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.next_imm_data(next_imm_data), .imm_data_in(imm_data_in),
 

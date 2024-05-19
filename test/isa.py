@@ -93,6 +93,11 @@ class BinopNum(Enum):
 	MOV  = 9
 
 
+class ShiftopNum(Enum):
+	ROR = 0
+	SHR = 1
+
+
 class Arg:
 	"""arg"""
 	def __init__(self, wide):
@@ -506,6 +511,82 @@ class Binop(Instruction):
 			#print((prefix, o, m, reg1, d, z, arg2.encode(is_dest=d), type(arg2)))
 			enc = (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T, extra_dest=extra)
 			return [enc] + extra
+
+
+class Shift(Instruction):
+	def __init__(self, shiftop, arg1, arg2):
+		assert isinstance(shiftop, ShiftopNum)
+		assert isinstance(arg1, ArgReg)
+		assert isinstance(arg2, Arg)
+		self.wide = arg1.wide
+		assert not arg2.wide
+
+		super().__init__()
+		self.shiftop = shiftop
+		self.arg1 = arg1
+		self.arg2 = arg2
+
+	def execute(self, state):
+
+		# Calculate memory addresses before applying side effects (postincrement/predecrement)
+		if isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
+
+		self.arg2.apply_side_effect(state)
+
+		# Read registers as data after applying side effects, even postincrement
+		arg1 = self.arg1.get_value(state) # Always a register
+		if not isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
+
+		arg2 = arg2 & 14
+
+		if   self.shiftop == ShiftopNum.ROR: result = ((arg1 | (arg1 << nbits(self.wide))) >> (arg2 if self.wide else (arg2 & 7))) & bitmask(self.wide)
+		elif self.shiftop == ShiftopNum.SHR: result = arg1 >> arg2
+		else: assert False # not implemented
+
+		print("shift(", self.wide, ", ", self.shiftop, ", ", hex(arg1), ", ", hex(arg2), ") =", hex(result))
+
+		state.set_dest(self.arg1.get_dest(state), result)
+		state.step_pc()
+
+	def encode(self):
+		reg1 = self.arg1.get_reg()
+		extra = []
+
+		if   self.shiftop == ShiftopNum.ROR: aaa = 0
+		elif self.shiftop == ShiftopNum.SHR: aaa = 4
+		else: assert False # not supported
+
+		if isinstance(self.arg2, ArgMemZP):
+			assert False # Not supported
+			# 111111
+			# 5432109876543210
+			# 1eaaa1rr11iiiiii	shift r8,   src
+			# 01aaa1rr11iiiiii	shift r16,  src
+			prefix = 1 if self.wide else 2 | (reg1&1)
+			m, d, z = 1, 1, 1
+			enc = (prefix << 14) | (aaa << 11) | (m << 10) | (((reg1&6)|d) << 7) | (z << 6) | self.arg2.encode(extra_dest=extra)
+			return [enc] + extra
+
+		elif isinstance(self.arg2, ArgImm6):
+			# 111111
+			# 5432109876543210
+			# 001g11rr01bbiiii	shift r8,  imm4
+			# 000111rr01bbiiii	shift r16, imm4
+			prefix = 1 if self.wide else 2 | (reg1&1)
+			m, d, z = 1, 0, 1
+			o = 1
+
+			arg2_enc = self.arg2.encode(T=ArgImm6, extra_dest=extra)
+			assert 0 <= arg2_enc <= 15
+			assert (arg2_enc & 1) == 0
+
+			assert (aaa & 1) == 0
+			bb = aaa >> 1
+
+			enc = (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|d) << 7) | (z << 6) | (bb << 4) | arg2_enc
+			return [enc] + extra
+
+		else: assert 0 # Not supported
 
 
 class Jump(Instruction):

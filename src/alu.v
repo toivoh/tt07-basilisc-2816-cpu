@@ -24,13 +24,16 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		input wire output_scan_out,
 		input wire update_carry_flags, update_other_flags,
 
+		input wire rotate, do_shr,
+		input wire [$clog2(REG_BITS*2/NSHIFT)-1:0] rotate_count,
+
 		output wire active, // When high, data in shifted on data_in and data_out (if used by the operation)
 		input wire [NSHIFT-1:0] data_in1, data_in2,
 		output wire [NSHIFT-1:0] data_out,
 
 		output reg flag_c, flag_v, flag_s, flag_z,
 
-		output wire [$clog2(2*REG_BITS / NSHIFT)-1:0] counter
+		output wire [$clog2(2*REG_BITS/NSHIFT)-1:0] counter
 	);
 	wire arg2_7bit;
 	wire arg2_6bit;
@@ -39,6 +42,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 	localparam NUM_STATES = 2*REG_BITS / NSHIFT; // must divide evenly
 	localparam STATE_BITS = $clog2(NUM_STATES);
+	localparam ROTATE_COUNT_BITS = STATE_BITS;
 
 	localparam NUM_STATES_PAIR = NUM_STATES;
 	localparam STATE_BITS_PAIR = STATE_BITS;
@@ -61,8 +65,10 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 	reg [STATE_BITS-1:0] state; // Counts through the steps of an operation
 	wire [STATE_BITS+1-1:0] inc_state = state + active;
-	wire last_op_cycle = pair_op ? inc_state[STATE_BITS_PAIR] : inc_state[STATE_BITS_SINGLE];
-	wire [STATE_BITS-1:0] next_state = last_op_cycle ? 0 : inc_state[STATE_BITS-1:0];
+	// TODO: truncate rotate_count when doing 8 bit rotations?
+	wire last_op_cycle = rotate ? (inc_state[STATE_BITS_PAIR-1:0] == rotate_count) :
+		(pair_op ? inc_state[STATE_BITS_PAIR] : inc_state[STATE_BITS_SINGLE]);
+	//wire [STATE_BITS-1:0] next_state = last_op_cycle ? 0 : inc_state[STATE_BITS-1:0];
 
 	wire second = state[STATE_BITS_PAIR-1]; // are we on the second byte in the pair?
 	assign counter = state;
@@ -73,10 +79,11 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	assign op_done = last_op_cycle;
 
 	always @(posedge clk) begin
-		if (reset) begin
+		if (reset ||last_op_cycle) begin
 			state <= 0;
 		end else begin
-			state <= next_state;
+			//state <= next_state;
+			state <= inc_state[STATE_BITS-1:0];
 		end
 	end
 
@@ -89,7 +96,6 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	// Is the operation using just one register operand?
 	//wire single_reg = (operation == OP_MOV) || external_arg2;
 	wire single_reg = external_arg2;
-	assign scan_in2 = scan_out2;
 
 	wire do_scan  = op_valid;
 	wire do_scan2 = op_valid && !single_reg;
@@ -144,16 +150,19 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 
 
-	assign scan_in = update_reg1 ? result : scan_out;
+	assign scan_in  = rotate ? (do_shr ? 1'b0 : scan_out2) : (update_reg1 ? result : scan_out);
+	assign scan_in2 = rotate ? scan_out : scan_out2;
 
 	wire [LOG2_NR-1:0] pre_reg_index = reg1;
 	//wire [LOG2_NR-1:0] pre_reg_index2 = single_reg ? reg1 : reg2;
-	wire [LOG2_NR-1:0] pre_reg_index2 = reg2;
+	//wire [LOG2_NR-1:0] pre_reg_index2 = reg2;
+	wire [LOG2_NR-1:0] pre_reg_index2 = rotate ? reg1 : reg2;
 
-	// If pair_op is true, replace bottom register index bit with state[STATE_BITS_PAIR-1] (zero for first register in pair, then one)
-	assign reg_index  = {pre_reg_index[ LOG2_NR-1:1], pair_op ? second : pre_reg_index[0]};
+	// If pair_op is true, replace bottom register index bit with state[STATE_BITS_PAIR-1] (zero for first register in pair, then one).
+	// For rotate, make reg_index the top, so that it can scan in zeros when do_shr is true.
+	assign reg_index  = {pre_reg_index[ LOG2_NR-1:1], pair_op ?  (rotate ? 1'b1 : second) : pre_reg_index[0]};
 	// Will scan second register for both bytes even if just using the lower one
-	assign reg_index2 = {pre_reg_index2[LOG2_NR-1:1], pair_op2 ? second : pre_reg_index2[0]};
+	assign reg_index2 = {pre_reg_index2[LOG2_NR-1:1], pair_op2 ? (rotate ? 1'b0 : second) : pre_reg_index2[0]};
 
 	wire next_carry = sum[NSHIFT];
 	wire next_scarry = sum_v[NSHIFT];

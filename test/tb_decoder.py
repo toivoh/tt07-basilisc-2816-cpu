@@ -55,19 +55,22 @@ async def test_decoder(dut):
 
 			#inst = Binop(BinopNum.SUB, ArgReg(False, 5), ArgReg(False, 4))
 			wide = randbool()
-			# TODO: Test CMP, TEST
-			#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
-			#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.MOV])
-			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
-			if opnum != BinopNum.MOV and randrange(4) == 0: # mov r, imm6 has no encoding; use mov r, imm8 instead
-				arg1, arg2 = rand_arg_reg(wide), rand_arg_imm6(wide)
-			elif opnum == BinopNum.MOV and randbool(): # mov r, imm8 -- choose imm8 more often since it covers more of the encoding space
-				arg1, arg2 = rand_arg_reg(wide), rand_arg_imm8(wide)
+			if randrange(10) == 0:
+				inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), ArgImm6(False, 2*randrange(8)))
 			else:
-				if randbool(): arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True)
-				else:          arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
+				# TODO: Test CMP, TEST
+				#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+				#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.MOV])
+				opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+				if opnum != BinopNum.MOV and randrange(4) == 0: # mov r, imm6 has no encoding; use mov r, imm8 instead
+					arg1, arg2 = rand_arg_reg(wide), rand_arg_imm6(wide)
+				elif opnum == BinopNum.MOV and randbool(): # mov r, imm8 -- choose imm8 more often since it covers more of the encoding space
+					arg1, arg2 = rand_arg_reg(wide), rand_arg_imm8(wide)
+				else:
+					if randbool(): arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True)
+					else:          arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
 
-			inst = Binop(opnum, arg1, arg2)
+				inst = Binop(opnum, arg1, arg2)
 
 			#inst = Binop(BinopNum.SUB, ArgReg(False, 5), ArgMemR16PlusR8(False, 2, 7))
 			#inst = Binop(BinopNum.SUB, ArgMemR16PlusR8(False, 2, 7), ArgReg(False, 5))
@@ -88,6 +91,7 @@ async def test_decoder(dut):
 			#inst = Binop(BinopNum.MOV, ArgReg(True, 4), ArgZextReg(True, 7))
 			#inst = Binop(BinopNum.SUB, ArgReg(wide, 4), ArgMemR16IncDec(wide, 6, False))
 			#inst = Binop(BinopNum.SUB, ArgMemR16IncDec(wide, 6, False), ArgReg(wide, 4))
+			#inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), ArgImm6(False, 2*randrange(8)))
 
 			inst.execute(state)
 

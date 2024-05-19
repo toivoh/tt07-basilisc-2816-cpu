@@ -14,6 +14,8 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 		output wire inst_valid,
 		input wire inst_done,
 
+		output reg [IMM_BITS-1:0] imm_reg,
+
 		input wire load_imm16,
 		output wire imm16_loaded,
 		output wire [IO_BITS-1:0] imm_data_out,
@@ -91,7 +93,7 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 	assign add = sreg_full && can_add;
 
 	reg [INST_BITS-1:0] inst_reg;
-	reg [IMM_BITS-1:0] imm_reg;
+	//reg [IMM_BITS-1:0] imm_reg;
 	reg inst_reg_valid;
 
 	assign inst_valid = inst_reg_valid;

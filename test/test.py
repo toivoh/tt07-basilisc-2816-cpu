@@ -50,10 +50,15 @@ async def test_cpu0(dut):
 				mem[pc] = w; pc += 1
 
 		if False:
+			encode(Binop(BinopNum.MOV,   ArgReg(True, 0), ArgImm16(True, 0x1234)))
+			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgImm6(False, 12)))
+			encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
+
+		if False:
 			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0xe4a5)))
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgMemImm16(True, 0xbcde)))
 			mem[0xbcde>>1] = 0xe4a5
-		if True:
+		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 6), ArgImm8(True, -128)))
 			target_pc = pc + 8
 			#encode(Jump(ArgImm16(True, 2*target_pc)))
@@ -269,7 +274,8 @@ async def test_cpu(dut):
 
 
 	for iter in range(n_tests):
-		if randrange(8) == 0:
+		rnd = randrange(9)
+		if rnd == 0:
 			if randbool():
 				# Avoid jumping with offset = 0
 				offset = randrange(-128, 128 - min_jump)
@@ -281,6 +287,9 @@ async def test_cpu(dut):
 				call = False if isinstance(arg, ArgMemZP) else randbool()
 				inst = Jump(arg, call=call)
 				print("Call" if call else "Jump")
+		elif rnd == 1:
+			wide = randbool()
+			inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), ArgImm6(False, 2*randrange(8)))
 		else:
 			wide = randbool()
 			# TODO: Test CMP, TEST
