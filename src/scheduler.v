@@ -47,6 +47,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		output wire next_imm_data,
 
 		output wire addr_stage,
+		input block_tx_reply,
 
 		// PC control interface
 		output wire block_prefetch, write_pc_now, ext_pc_next, // ext_pc_next may only be high when prefetch_idle is
@@ -177,7 +178,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// but the timing is one cycle off we we set tx_reply_wanted = 0.
 	// TODO: Fix the timing issues related to that TX messages have one more cycle of header compared to RX messages,
 	// and reenable this.
-	assign tx_reply_wanted = !((dest == `DEST_MEM) && (op == `OP_MOV /*|| external_arg2*/)) || write_pc;
+	assign tx_reply_wanted = !((dest == `DEST_MEM) && (op == `OP_MOV)) && !block_tx_reply || write_pc;
 
 	assign tx_command = send_read ? `TX_HEADER_READ_16 : (wide ? `TX_HEADER_WRITE_16 : `TX_HEADER_WRITE_8);
 

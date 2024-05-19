@@ -335,6 +335,8 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire use_cc = branch;
 
+	wire block_tx_reply = push_pc_plus4;
+
 	scheduler #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
 		.clk(clk), .reset(reset),
 		.inst_valid(inst_valid), .inst_done(sc_inst_done),
@@ -349,7 +351,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data_in2), .next_imm_data(sc_next_imm_data),
 		.reserve_tx(reserve_tx),
-		.addr_stage(addr_stage),
+		.addr_stage(addr_stage), .block_tx_reply(block_tx_reply),
 
 		.block_prefetch(block_prefetch), .write_pc_now(write_pc), .ext_pc_next(ext_pc_next), .comp_counter(comp_counter),
 		.prefetch_idle(prefetch_idle), .pc_data_in(pc_data_in), .pc_data_out(pc_data_out),
