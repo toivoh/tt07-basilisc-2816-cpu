@@ -58,8 +58,10 @@ async def test_cpu0(dut):
 			#mem[0x3456 >> 1] = 0xabcd
 			#encode(Swap(ArgReg(True, 0), ArgMemR16PlusImm2(True, 2, 2)))
 
-			encode(Swap(ArgReg(True, 0), ArgMemZP(True, 254)))
-			mem[254>>1] = 0xabcd
+			#encode(Swap(ArgReg(True, 0), ArgMemZP(True, 254)))
+			#mem[254>>1] = 0xabcd
+
+			encode(Swap(ArgReg(False, 0), ArgReg(False, 1)))
 
 		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
@@ -308,7 +310,10 @@ async def test_cpu(dut):
 			else: arg2 = rand_arg(False, is_src=True, zp_ok=False)
 			inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), arg2)
 		elif rnd == 3:
-			inst = Swap(rand_arg_reg(wide), rand_arg_mem(wide))
+			wide = randbool()
+			if randrange(4) == 0: arg2 = rand_arg_reg(wide)
+			else: arg2 = rand_arg_mem(wide)
+			inst = Swap(rand_arg_reg(wide), arg2)
 		else:
 			wide = randbool()
 			# TODO: Test CMP, TEST

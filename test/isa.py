@@ -608,7 +608,7 @@ class Swap(Instruction):
 			# 001g11rr11iiiiii	swap dest8,  r8
 			# 000111rr11iiiiii	swap dest16, r16
 
-			assert isinstance(self.arg2, ArgMem) # only supported case so far
+			assert isinstance(self.arg2, (ArgReg, ArgMem)) # only supported cases so far
 
 			m, d, z, o = 1, 1, 1, 1
 

@@ -27,7 +27,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		input wire rotate, do_shr,
 		input wire [$clog2(REG_BITS*2/NSHIFT)-1:0] rotate_count,
 
-		input wire do_swap,
+		input wire do_swap_reg, do_swap_mem,
 
 		output wire active, // When high, data in shifted on data_in and data_out (if used by the operation)
 		input wire [NSHIFT-1:0] data_in1, data_in2,
@@ -152,8 +152,8 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 
 
-	assign scan_in  = rotate ? (do_shr ? 1'b0 : scan_out2) : (update_reg1 ? (do_swap ? data_in2 : result) : scan_out);
-	assign scan_in2 = rotate ? scan_out : scan_out2;
+	assign scan_in  = rotate ? (do_shr ? 1'b0 : scan_out2) : (update_reg1 ? (do_swap_mem ? data_in2 : result) : scan_out);
+	assign scan_in2 = rotate || do_swap_reg ? scan_out : scan_out2;
 
 	wire [LOG2_NR-1:0] pre_reg_index = reg1;
 	//wire [LOG2_NR-1:0] pre_reg_index2 = single_reg ? reg1 : reg2;

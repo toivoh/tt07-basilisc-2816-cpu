@@ -258,6 +258,9 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire do_shr = use_shr; // Has effect only when rotate is true
 	assign no_op = rotate_stage && rotate_count == '0;
 
+	wire do_swap_reg =              !need_addr && do_swap;
+	wire do_swap_mem = data_stage && need_addr && do_swap;
+
 	ALU #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) alu (
 		.clk(clk), .reset(reset),
 		.op_done(op_done), .op_valid(alu_en),
@@ -268,7 +271,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.output_scan_out(output_scan_out),
 		.update_carry_flags(update_carry_flags && !block_flag_updates), .update_other_flags(update_other_flags && !block_flag_updates),
 		.rotate(rotate),.do_shr(do_shr),.rotate_count(rotate_count),
-		.do_swap(do_swap && data_stage),
+		.do_swap_reg(do_swap_reg), .do_swap_mem(do_swap_mem),
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(pc_data_in), .data_in2(data_in), .data_out(data_out),
 		.counter(comp_counter)

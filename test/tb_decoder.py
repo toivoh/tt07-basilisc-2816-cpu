@@ -58,7 +58,9 @@ async def test_decoder(dut):
 
 			rnd = randrange(10)
 			if rnd == 0:
-				inst = Swap(rand_arg_reg(wide), rand_arg_mem(wide))
+				if randrange(4) == 0: arg2 = rand_arg_reg(wide)
+				else: arg2 = rand_arg_mem(wide)
+				inst = Swap(rand_arg_reg(wide), arg2)
 			elif rnd <= 2:
 				#arg2 = ArgImm6(False, 2*randrange(8))
 				if randbool(): arg2 = ArgImm6(False, 2*randrange(8))
