@@ -44,6 +44,8 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire use_rotate, rotate_only, use_shr,
 		input wire [$clog2(REG_BITS*2/NSHIFT)-1:0] rotate_count,
 
+		input wire do_swap,
+
 		output wire load_imm16,
 		input wire imm16_loaded,
 		input wire [NSHIFT-1:0] imm_data_in,
@@ -198,7 +200,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// but the timing is one cycle off we we set tx_reply_wanted = 0.
 	// TODO: Fix the timing issues related to that TX messages have one more cycle of header compared to RX messages,
 	// and reenable this.
-	assign tx_reply_wanted = !((dest == `DEST_MEM) && (op == `OP_MOV)) && !block_tx_reply || write_pc;
+	assign tx_reply_wanted = !((dest == `DEST_MEM) && (op == `OP_MOV)) && !block_tx_reply || write_pc || do_swap;
 
 	assign tx_command = send_read ? `TX_HEADER_READ_16 : (wide ? `TX_HEADER_WRITE_16 : `TX_HEADER_WRITE_8);
 
@@ -239,7 +241,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire [LOG2_NR-1:0] reg1 = addr_stage ? addr_reg1 : reg_dest;
 	wire [LOG2_NR-1:0] reg2 = addr_stage ? reg_addr_src : reg_src;
 	wire [NSHIFT-1:0] data_in = curr_src_imm ? imm_data_in : rx_pins; // Must wait for rx_pins to contain the right data
-	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && (dest == `DEST_REG) && update_dest);
+	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && ((dest == `DEST_REG) || do_swap) && update_dest);
 	wire reverse_args = data_stage && (dest == `DEST_MEM) && !curr_src_imm; // Can we have an immediate source and a memory destination at the same time?
 
 	// Should we double r8 in [r16 + r8] for 16 bit wide operations?
@@ -266,6 +268,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.output_scan_out(output_scan_out),
 		.update_carry_flags(update_carry_flags && !block_flag_updates), .update_other_flags(update_other_flags && !block_flag_updates),
 		.rotate(rotate),.do_shr(do_shr),.rotate_count(rotate_count),
+		.do_swap(do_swap && data_stage),
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(pc_data_in), .data_in2(data_in), .data_out(data_out),
 		.counter(comp_counter)

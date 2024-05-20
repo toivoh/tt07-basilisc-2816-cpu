@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Sun May 19 11:44:42 2024
+[*] Mon May 20 15:35:22 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.vcd"
-[dumpfile_mtime] "Sun May 19 11:43:14 2024"
-[dumpfile_size] 208652
+[dumpfile_mtime] "Mon May 20 15:24:24 2024"
+[dumpfile_size] 25221374
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.gtkw"
-[timestart] 98480000
-[size] 2153 1128
+[timestart] 157270000
+[size] 2463 1372
 [pos] -1 -1
-*-23.000000 136560000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 188810000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.cpu.
@@ -19,7 +19,7 @@
 [sst_width] 297
 [signals_width] 268
 [sst_expanded] 1
-[sst_vpaned_height] 344
+[sst_vpaned_height] 430
 @28
 tb.rst_n
 tb.clk
@@ -76,12 +76,17 @@ tb.top.cpu.dec.pre_stage
 -
 @28
 tb.top.cpu.dec.addr_reg1[2:0]
+@22
+tb.top.cpu.dec.arg2_enc[5:0]
+@28
+tb.top.cpu.dec.use_imm8
+tb.top.cpu.dec.use_zp
+tb.top.cpu.dec.m
 tb.top.cpu.dec.src1_from_pc
 @200
 -
 @28
 tb.top.cpu.dec.use_rotate
-@29
 tb.top.cpu.dec.use_shr
 @200
 -
@@ -104,6 +109,10 @@ tb.top.cpu.dec.inst_done
 tb.top.cpu.dec.sched.inst_done
 tb.top.cpu.dec.sched.op_done
 tb.top.cpu.dec.sched.tx_command_valid
+@200
+-
+@28
+tb.top.cpu.dec.do_swap
 @200
 -
 @28
@@ -191,6 +200,12 @@ tb.top.cpu.pref.pc_data_out[1:0]
 -
 -ALU
 @28
+tb.top.cpu.dec.sched.alu.op_valid
+@29
+tb.top.cpu.dec.sched.alu.reverse_args
+@200
+-
+@28
 tb.top.cpu.dec.sched.alu.data_in1[1:0]
 tb.top.cpu.dec.sched.alu.data_in2[1:0]
 tb.top.cpu.dec.sched.alu.result[1:0]
@@ -199,6 +214,10 @@ tb.top.cpu.dec.sched.alu.data_out[1:0]
 -
 @28
 tb.top.cpu.dec.sched.alu.arg2_2bit
+@200
+-
+@28
+tb.top.cpu.dec.sched.alu.update_reg1
 @200
 -
 -CPU

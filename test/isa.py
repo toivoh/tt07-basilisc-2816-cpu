@@ -552,6 +552,71 @@ class Binop(Instruction):
 			return [enc] + extra
 
 
+class Swap(Instruction):
+	def __init__(self, arg1, arg2):
+		assert isinstance(arg1, ArgReg)
+		assert isinstance(arg2, Arg)
+		assert arg1.wide == arg2.wide
+		wide = arg1.wide
+
+		super().__init__()
+		self.wide = wide
+		self.arg1 = arg1
+		self.arg2 = arg2
+
+	def execute(self, state):
+		# Calculate memory addresses before applying side effects (postincrement/predecrement)
+		if isinstance(self.arg1, ArgMem): arg1 = self.arg1.get_value(state)
+		if isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
+		dest1 = self.arg1.get_dest(state)
+		dest2 = self.arg2.get_dest(state)
+
+		self.arg1.apply_side_effect(state)
+		self.arg2.apply_side_effect(state)
+
+		# Read registers as data after applying side effects, even postincrement
+		if not isinstance(self.arg1, ArgMem): arg1 = self.arg1.get_value(state)
+		if not isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
+
+		arg1 = arg1 & bitmask(self.wide)
+		arg2 = arg2 & bitmask(self.wide)
+
+		print("swap(", self.wide, ", ", str(self.arg1), ":", hex(arg1), ", ", str(self.arg2), ":", hex(arg2), ")")
+
+		state.set_dest(dest1, arg2)
+		state.set_dest(dest2, arg1)
+		state.step_pc(1 + self.arg1.get_extra_words() + self.arg2.get_extra_words())
+
+	def encode(self):
+		reg1 = self.arg1.get_reg()
+		extra = []
+		if isinstance(self.arg2, ArgMemZP):
+			# 111111
+			# 5432109876543210
+			# 001g00rr1ziiiiii	swap [zp], r8
+			# 000100rr1ziiiiii	swap [zp], r16
+
+			m, d, z, o = 0, 1, 0, 0
+
+			prefix = 1 if self.wide else 2 | (reg1&1)
+			enc = (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|d) << 7) | (z << 6) | self.arg2.encode(is_dest=True, T=ArgMemZP, extra_dest=extra)
+			return [enc] + extra
+
+		else:
+			# 111111
+			# 5432109876543210
+			# 001g11rr11iiiiii	swap dest8,  r8
+			# 000111rr11iiiiii	swap dest16, r16
+
+			assert isinstance(self.arg2, ArgMem) # only supported case so far
+
+			m, d, z, o = 1, 1, 1, 1
+
+			prefix = 1 if self.wide else 2 | (reg1&1)
+			enc = (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|d) << 7) | (z << 6) | self.arg2.encode(is_dest=True, extra_dest=extra)
+			return [enc] + extra
+
+
 class Shift(Instruction):
 	def __init__(self, shiftop, arg1, arg2):
 		assert isinstance(shiftop, ShiftopNum)
@@ -765,4 +830,13 @@ def rand_arg(wide, is_src=False, d_symmetry=True, zp_ok=True):
 	elif n == 7: return rand_arg_sext_reg(wide)
 	# is_src and wide and d_symmetry:
 	elif n == 8: return rand_arg_zext_reg(wide)
+	else: assert False
+
+def rand_arg_mem(wide, is_src=False, d_symmetry=True, zp_ok=True):
+	n = (not zp_ok) + randrange(4+zp_ok)
+	if   n == 0: return rand_arg_mem_zp(wide)
+	elif n == 1: return rand_arg_mem_r16r8(wide)
+	elif n == 2: return rand_arg_mem_r16incdec(wide)
+	elif n == 3: return rand_arg_mem_r16imm2(wide)
+	elif n == 4: return rand_arg_mem_imm16(wide)
 	else: assert False

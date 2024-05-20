@@ -55,13 +55,15 @@ async def test_decoder(dut):
 
 			#inst = Binop(BinopNum.SUB, ArgReg(False, 5), ArgReg(False, 4))
 			wide = randbool()
-			if randrange(5) == 0:
 
+			rnd = randrange(10)
+			if rnd == 0:
+				inst = Swap(rand_arg_reg(wide), rand_arg_mem(wide))
+			elif rnd <= 2:
 				#arg2 = ArgImm6(False, 2*randrange(8))
 				if randbool(): arg2 = ArgImm6(False, 2*randrange(8))
 				else: arg2 = rand_arg(False, is_src=True, zp_ok=False)
 				inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), arg2)
-
 			else:
 				# TODO: Test CMP, TEST
 				#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])

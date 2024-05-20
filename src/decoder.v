@@ -352,6 +352,8 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	assign feed_imm8 = (cls == CLASS_SHIFT) && data_stage;
 
+	wire do_swap = (cls == CLASS_SWAP);
+
 	scheduler #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
 		.clk(clk), .reset(reset),
 		.inst_valid(inst_valid), .inst_done(sc_inst_done),
@@ -364,6 +366,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),
 		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .rotate_count(rotate_count),
+		.do_swap(do_swap),
 		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data_in2), .next_imm_data(sc_next_imm_data),
 		.imm8_data_out(imm8_data_out),
