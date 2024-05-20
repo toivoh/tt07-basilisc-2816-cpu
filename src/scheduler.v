@@ -41,7 +41,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire use_cc,
 		input wire [`CC_BITS-1:0] cc,
 
-		input wire use_rotate, use_shr,
+		input wire use_rotate, rotate_only, use_shr,
 		input wire [$clog2(REG_BITS*2/NSHIFT)-1:0] rotate_count,
 
 		output wire load_imm16,
@@ -49,7 +49,9 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire [NSHIFT-1:0] imm_data_in,
 		output wire next_imm_data,
 
-		output wire addr_stage,
+		output wire [NSHIFT-1:0] imm8_data_out,
+
+		output wire addr_stage, data_stage,
 		input block_tx_reply,
 
 		// PC control interface
@@ -145,9 +147,9 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	always @(posedge clk) begin
 		if (reset || inst_done) begin
 			stage <= STAGE0;
-		end else if (op_done) begin
+		end else if (op_done && addr_stage) begin
 			stage <= STAGE1;
-		end else if (skip_stage) begin // TODO: Allow op_done to go into rotate stage too
+		end else if (op_done || skip_stage) begin // TODO: Allow op_done to go into rotate stage too
 			stage <= STAGE_ROTATE;
 		end
 
@@ -161,11 +163,11 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	assign need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM); // Assume need_addr means that we send a read during the address stage
 	assign addr_stage = (stage == STAGE0) && need_addr;
 	wire rotate_stage = stage[STAGE_BIT_ROTATE];
-	wire data_stage = !rotate_stage && !addr_stage;
+	assign data_stage = !rotate_stage && !addr_stage;
 
 	assign inst_done = (op_done && (use_rotate ? rotate_stage : data_stage)) || (skip && !wait_for_imm16);
 
-	assign skip_stage = inst_valid && use_rotate && !rotate_stage; // TODO: Allow to run address and data stages for rotates
+	assign skip_stage = inst_valid && rotate_only && !rotate_stage; // TODO: Allow to run address and data stages for rotates
 
 	// Stage properties
 	// ----------------
@@ -173,7 +175,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire write_pc = data_stage && (dest == `DEST_PC);
 	wire access_pc = read_pc || write_pc;
 
-	wire block_flag_updates = !data_stage || (dest == `DEST_PC);
+	wire block_flag_updates = !data_stage || (dest == `DEST_PC) || use_rotate; // TODO: might update flags during the rotate stage
 
 	wire send_read = addr_stage || (data_stage && write_pc); // When write_pc is high, we do the first prefetch at the same time as writing PC
 	wire will_write = (dest == `DEST_MEM);
@@ -220,17 +222,18 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire active;
 	wire [NSHIFT-1:0] data_out;
 
-	assign next_imm_data = curr_src_imm && active;
+	assign next_imm_data = (curr_src_imm || (use_rotate && data_stage)) && active;
 	assign ext_pc_next = access_pc && active;
 
 	assign pc_data_out = data_out;
 	assign tx_data     = data_out;
+	assign imm8_data_out = data_out;
 
 	// Invoke ALU
 	// ----------
 	wire [`OP_BITS-1:0] operation = addr_stage ? (addr_op == `ADDR_OP_MOV ? `OP_MOV : `OP_ADD) : op;
-	wire pair_op  = addr_stage ? 1'b1 : wide;
-	wire pair_op2 = addr_stage ? addr_wide2 : wide2;
+	wire pair_op  = addr_stage ? 1'b1       : (data_stage && use_rotate ? 1'b0 : wide);
+	wire pair_op2 = addr_stage ? addr_wide2 : (data_stage && use_rotate ? 1'b0 : wide2);
 	wire sext2 = addr_stage ? addr_src_sext2 : src_sext2;
 	wire external_arg2 = curr_src_imm | (curr_src == `SRC_MEM);
 	wire [LOG2_NR-1:0] reg1 = addr_stage ? addr_reg1 : reg_dest;
@@ -242,7 +245,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// Should we double r8 in [r16 + r8] for 16 bit wide operations?
 	// SRC_IMM2 case also captures autoincrement/decrement
 	// TODO: Which pc operations should we double arg2 for?
-	wire double_arg2 = (addr_stage && wide && (addr_src == `SRC_IMM7 || addr_src == `SRC_IMM2)) || (write_pc && curr_src_imm && (curr_src != `SRC_IMM16)) || (data_stage && double_src2);
+	wire double_arg2 = (addr_stage && wide && !use_rotate && (addr_src == `SRC_IMM7 || addr_src == `SRC_IMM2)) || (write_pc && curr_src_imm && (curr_src != `SRC_IMM16)) || (data_stage && double_src2);
 	//wire double_arg2 = addr_stage && wide && !addr_wide2; // double addr_arg2 for most address calculations
 
 	wire [2:0] arg2_limit_length = {(addr_src == `SRC_IMM7) && addr_stage, (src == `SRC_IMM6) && data_stage, (addr_src == `SRC_IMM2) && addr_stage || (src == `SRC_IMM2 && data_stage)};

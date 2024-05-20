@@ -20,9 +20,10 @@
 
 
 `define DEST_BITS 2
-`define DEST_REG 2'd0
-`define DEST_MEM 2'd1
-`define DEST_PC  2'd2
+`define DEST_REG  2'd0
+`define DEST_MEM  2'd1
+`define DEST_PC   2'd2
+`define DEST_IMM8 2'd3
 
 `define SRC_BITS 4
 `define SRC_BIT_IMM 3

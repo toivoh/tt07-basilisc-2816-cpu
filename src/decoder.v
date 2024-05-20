@@ -15,6 +15,8 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		output wire inst_done,
 
 		input wire [2*REG_BITS-1:0] imm_full,
+		output wire feed_imm8,
+		output wire [NSHIFT-1:0] imm8_data_out,
 
 		output wire reserve_tx,
 
@@ -55,7 +57,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	);
 	localparam ROTATE_COUNT_BITS = $clog2(REG_BITS*2/NSHIFT);
 
-	wire addr_stage;
+	wire addr_stage, data_stage;
 
 	// Decoder stage progression
 	// =========================
@@ -309,6 +311,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				end
 			end
 		end
+		if (use_rotate) wide2 = wide;
 	end
 
 	wire [LOG2_NR-1:0] addr_reg2 = arg2_enc[2:0];
@@ -318,14 +321,13 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire [LOG2_NR-1:0] arg1_reg = r;
 
-	// TODO: proper logic to select op
-	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : ((cls == CLASS_MOV) ? `OP_MOV : binop);
+	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : ((cls == CLASS_ALU) ? binop : `OP_MOV);
 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
 	wire update_other_flags = (cls == CLASS_ALU || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
 	wire update_carry_flags = ((cls == CLASS_ALU && !binop[`OP_BIT_NADD]) || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
 
-	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : ( (((d && !use_imm8) && (arg2_src == `SRC_MEM)) || push_pc_plus4) ? `DEST_MEM : `DEST_REG );
+	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( (((d && !use_imm8) && (arg2_src == `SRC_MEM)) || push_pc_plus4) ? `DEST_MEM : `DEST_REG ));
 	wire [LOG2_NR-1:0] reg_dest = arg1_reg;
 	wire [`SRC_BITS-1:0] src = arg2_src;
 	wire [LOG2_NR-1:0] reg_src = arg2_reg;
@@ -344,8 +346,11 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire block_tx_reply = push_pc_plus4;
 
 	wire use_rotate = (cls == CLASS_SHIFT);
-	wire use_shr = imm6[5];
+	wire rotate_only = use_rotate & (d == 0); // Differentias between the two shift forms
+	wire use_shr = shift_op[2];
 	wire [ROTATE_COUNT_BITS-1:0] rotate_count = imm_full[ROTATE_COUNT_BITS+1-1:1]; // Ignore lsb
+
+	assign feed_imm8 = (cls == CLASS_SHIFT) && data_stage;
 
 	scheduler #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
 		.clk(clk), .reset(reset),
@@ -358,11 +363,12 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),
-		.use_rotate(use_rotate),.use_shr(use_shr),.rotate_count(rotate_count),
+		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .rotate_count(rotate_count),
 		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data_in2), .next_imm_data(sc_next_imm_data),
+		.imm8_data_out(imm8_data_out),
 		.reserve_tx(reserve_tx),
-		.addr_stage(addr_stage), .block_tx_reply(block_tx_reply),
+		.addr_stage(addr_stage), .data_stage(data_stage), .block_tx_reply(block_tx_reply),
 
 		.block_prefetch(block_prefetch), .write_pc_now(write_pc), .ext_pc_next(ext_pc_next), .comp_counter(comp_counter),
 		.prefetch_idle(prefetch_idle), .pc_data_in(pc_data_in), .pc_data_out(pc_data_out),

@@ -3,6 +3,8 @@
 `include "common.vh"
 
 module tb_decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2 ) ();
+	localparam IO_BITS = NSHIFT;
+	localparam IMM_BITS = 16;
 
 	// this part dumps the trace to a vcd file that can be viewed with GTKWave
 	initial begin
@@ -30,7 +32,13 @@ module tb_decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2 ) ();
 	reg [15:0] inst;
 
 	reg [15:0] imm_data;
-	always @(posedge clk) if (next_imm_data) imm_data <= imm_data >> NSHIFT;
+	wire feed_imm8;
+	wire [IO_BITS-1:0] imm8_data_in;
+
+	//always @(posedge clk) if (next_imm_data) imm_data <= imm_data >> NSHIFT;
+	always @(posedge clk) begin
+		if (next_imm_data) imm_data <= {imm_data[IMM_BITS-1:8]>>IO_BITS, feed_imm8 ? imm8_data_in : imm_data[7+IO_BITS -: IO_BITS], imm_data[7:IO_BITS]};
+	end
 
 	wire [NSHIFT-1:0] imm_data_in = imm_data[NSHIFT-1:0];
 	wire next_imm_data;
@@ -57,6 +65,7 @@ module tb_decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2 ) ();
 		.inst_valid(inst_valid), .inst(inst), .inst_done(inst_done), .imm_full(imm_data),
 		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.next_imm_data(next_imm_data), .imm_data_in(imm_data_in),
+		.feed_imm8(feed_imm8), .imm8_data_out(imm8_data_in),
 
 		.tx_command_valid(tx_command_valid), .tx_command(tx_command), .tx_command_started(tx_command_started), .tx_active(tx_active),
 		.tx_data(tx_data), .tx_data_next(tx_data_next), .tx_done(tx_done),

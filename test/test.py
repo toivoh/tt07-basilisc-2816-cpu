@@ -46,13 +46,18 @@ async def test_cpu0(dut):
 
 		def encode(inst):
 			nonlocal pc
-			for w in inst.encode():
+			encoded = inst.encode()
+			print(encoded)
+			for w in encoded:
 				mem[pc] = w; pc += 1
 
 		if False:
-			encode(Binop(BinopNum.MOV,   ArgReg(True, 0), ArgImm16(True, 0x1234)))
+			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgImm6(False, 12)))
-			encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
+			#encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
+
+			encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 12)))
+			encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgReg(False, 2)))
 
 		if False:
 			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0xe4a5)))
@@ -274,7 +279,7 @@ async def test_cpu(dut):
 
 
 	for iter in range(n_tests):
-		rnd = randrange(9)
+		rnd = randrange(10)
 		if rnd == 0:
 			if randbool():
 				# Avoid jumping with offset = 0
@@ -287,9 +292,11 @@ async def test_cpu(dut):
 				call = False if isinstance(arg, ArgMemZP) else randbool()
 				inst = Jump(arg, call=call)
 				print("Call" if call else "Jump")
-		elif rnd == 1:
+		elif rnd <= 2:
 			wide = randbool()
-			inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), ArgImm6(False, 2*randrange(8)))
+			if randbool(): arg2 = ArgImm6(False, 2*randrange(8))
+			else: arg2 = rand_arg(False, is_src=True, zp_ok=False)
+			inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), arg2)
 		else:
 			wide = randbool()
 			# TODO: Test CMP, TEST

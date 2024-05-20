@@ -15,6 +15,8 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 		input wire inst_done,
 
 		output reg [IMM_BITS-1:0] imm_reg,
+		input wire feed_imm8,
+		input wire [IO_BITS-1:0] imm8_data_in,
 
 		input wire load_imm16,
 		output wire imm16_loaded,
@@ -118,7 +120,8 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 			imm_reg <= last_entry[IMM_BITS-1:0];
 		end else begin
 			if (inst_done) inst_reg_valid <= 0;
-			if (next_imm_data) imm_reg <= imm_reg >> IO_BITS;
+			//if (next_imm_data) imm_reg <= imm_reg >> IO_BITS;
+			if (next_imm_data) imm_reg <= {imm_reg[IMM_BITS-1:8]>>IO_BITS, feed_imm8 ? imm8_data_in : imm_reg[7+IO_BITS -: IO_BITS], imm_reg[7:IO_BITS]};
 		end
 	end
 

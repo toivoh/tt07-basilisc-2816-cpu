@@ -98,7 +98,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	wire single_reg = external_arg2;
 
 	wire do_scan  = op_valid;
-	wire do_scan2 = op_valid && !single_reg;
+	wire do_scan2 = op_valid && (!single_reg || rotate);
 
 	wire [NSHIFT-1:0] arg1, arg2_0, arg2;
 	//assign arg1 = scan_out;

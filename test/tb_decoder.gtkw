@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Fri May 17 06:37:44 2024
+[*] Sun May 19 14:18:48 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.vcd"
-[dumpfile_mtime] "Fri May 17 05:46:51 2024"
-[dumpfile_size] 9964800
+[dumpfile_mtime] "Sun May 19 14:10:08 2024"
+[dumpfile_size] 39245
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.gtkw"
-[timestart] 0
+[timestart] 28370000
 [size] 2988 1720
 [pos] -1 -1
-*-23.000000 37280000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 59780000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb_decoder.
 [treeopen] tb_decoder.dec.
 [treeopen] tb_decoder.dec.sched.
@@ -29,7 +29,6 @@ tb_decoder.imm_data[15:0]
 tb_decoder.imm_data_in[1:0]
 tb_decoder.next_imm_data
 tb_decoder.dec.load_imm16
-@29
 tb_decoder.dec.imm16_loaded
 @200
 -
@@ -113,6 +112,17 @@ tb_decoder.dec.sched.active
 -
 @28
 tb_decoder.dec.sched.external_arg2
+@200
+-
+@28
+tb_decoder.dec.sched.execute
+tb_decoder.dec.sched.skip_stage
+tb_decoder.dec.sched.inst_valid
+tb_decoder.dec.sched.skip
+tb_decoder.dec.sched.no_op
+tb_decoder.dec.sched.rotate_stage
+@29
+tb_decoder.dec.sched.rotate_count[2:0]
 @200
 -
 -ALU
