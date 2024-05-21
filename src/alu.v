@@ -24,7 +24,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		input wire output_scan_out,
 		input wire update_carry_flags, update_other_flags,
 
-		input wire rotate, do_shr,
+		input wire rotate, timed_rotate, do_shr, do_ror1, last_ror1,
 		input wire [$clog2(REG_BITS*2/NSHIFT)-1:0] rotate_count,
 
 		input wire do_swap_reg, do_swap_mem,
@@ -68,8 +68,8 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	reg [STATE_BITS-1:0] state; // Counts through the steps of an operation
 	wire [STATE_BITS+1-1:0] inc_state = state + active;
 	// TODO: truncate rotate_count when doing 8 bit rotations?
-	wire last_op_cycle = rotate ? (inc_state[STATE_BITS_PAIR-1:0] == rotate_count) :
-		(pair_op ? inc_state[STATE_BITS_PAIR] : inc_state[STATE_BITS_SINGLE]);
+	wire last_op_cycle = timed_rotate ? (inc_state[STATE_BITS_PAIR-1:0] == rotate_count) :
+		(pair_op ? inc_state[STATE_BITS_PAIR] : inc_state[STATE_BITS_SINGLE]) || last_ror1;
 	//wire [STATE_BITS-1:0] next_state = last_op_cycle ? 0 : inc_state[STATE_BITS-1:0];
 
 	wire second = state[STATE_BITS_PAIR-1]; // are we on the second byte in the pair?
@@ -152,7 +152,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 
 
-	assign scan_in  = rotate ? (do_shr ? 1'b0 : scan_out2) : (update_reg1 ? (do_swap_mem ? data_in2 : result) : scan_out);
+	assign scan_in  = rotate ? (do_shr && !last_ror1 ? 2'b0 : (do_ror1 ? {last_ror1 ? (do_shr ? 1'b0 : scan_out2[NSHIFT-1:1]) : scan_out2[NSHIFT-1-1:0], carry} : scan_out2)) : (update_reg1 ? (do_swap_mem ? data_in2 : result) : scan_out);
 	assign scan_in2 = rotate || do_swap_reg ? scan_out : scan_out2;
 
 	wire [LOG2_NR-1:0] pre_reg_index = reg1;
@@ -166,7 +166,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	// Will scan second register for both bytes even if just using the lower one
 	assign reg_index2 = {pre_reg_index2[LOG2_NR-1:1], pair_op2 ? (rotate ? 1'b0 : second) : pre_reg_index2[0]};
 
-	wire next_carry = sum[NSHIFT];
+	wire next_carry = do_ror1 ? scan_out2[NSHIFT-1] : sum[NSHIFT];
 	wire next_scarry = sum_v[NSHIFT];
 	always @(posedge clk) begin
 		carry <= next_carry;

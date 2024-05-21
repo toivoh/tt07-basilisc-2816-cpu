@@ -55,7 +55,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		input wire rx_done, // only high when receiving scheduler data
 		input wire [NSHIFT-1:0] rx_pins
 	);
-	localparam ROTATE_COUNT_BITS = $clog2(REG_BITS*2/NSHIFT);
+	localparam ROTATE_COUNT_BITS = $clog2(REG_BITS*2);
 
 	wire addr_stage, data_stage;
 
@@ -348,7 +348,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire use_rotate = (cls == CLASS_SHIFT);
 	wire rotate_only = use_rotate & (d == 0); // Differentias between the two shift forms
 	wire use_shr = shift_op[2];
-	wire [ROTATE_COUNT_BITS-1:0] rotate_count = imm_full[ROTATE_COUNT_BITS+1-1:1]; // Ignore lsb
+	wire [ROTATE_COUNT_BITS-1:0] rotate_count = imm_full[ROTATE_COUNT_BITS-1:0];
 
 	assign feed_imm8 = (cls == CLASS_SHIFT) && data_stage;
 

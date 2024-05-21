@@ -645,7 +645,7 @@ class Shift(Instruction):
 		arg1 = self.arg1.get_value(state) # Always a register
 		if not isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
 
-		arg2 = arg2 & 14
+		arg2 = arg2 & 15
 
 		if   self.shiftop == ShiftopNum.ROR: result = ((arg1 | (arg1 << nbits(self.wide))) >> (arg2 if self.wide else (arg2 & 7))) & bitmask(self.wide)
 		elif self.shiftop == ShiftopNum.SHR: result = arg1 >> arg2
@@ -676,7 +676,6 @@ class Shift(Instruction):
 
 			arg2_enc = self.arg2.encode(T=ArgImm6, extra_dest=extra)
 			assert 0 <= arg2_enc <= 15
-			assert (arg2_enc & 1) == 0
 
 			assert (aaa & 1) == 0
 			bb = aaa >> 1

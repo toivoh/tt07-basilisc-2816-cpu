@@ -62,8 +62,8 @@ async def test_decoder(dut):
 				else: arg2 = rand_arg_mem(wide)
 				inst = Swap(rand_arg_reg(wide), arg2)
 			elif rnd <= 2:
-				#arg2 = ArgImm6(False, 2*randrange(8))
-				if randbool(): arg2 = ArgImm6(False, 2*randrange(8))
+				#arg2 = ArgImm6(False, randrange(16))
+				if randbool(): arg2 = ArgImm6(False, randrange(16))
 				else: arg2 = rand_arg(False, is_src=True, zp_ok=False)
 				inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), arg2)
 			else:

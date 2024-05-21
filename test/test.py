@@ -64,6 +64,11 @@ async def test_cpu0(dut):
 			encode(Swap(ArgReg(False, 0), ArgReg(False, 1)))
 
 		if False:
+			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x0a5f)))
+			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgImm6(False, 1)))
+			encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 5)))
+
+		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgImm6(False, 12)))
 			#encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
@@ -309,7 +314,7 @@ async def test_cpu(dut):
 				print("Call" if call else "Jump")
 		elif rnd <= 2:
 			wide = randbool()
-			if randbool(): arg2 = ArgImm6(False, 2*randrange(8))
+			if randbool(): arg2 = ArgImm6(False, randrange(16))
 			else: arg2 = rand_arg(False, is_src=True, zp_ok=False)
 			inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), arg2)
 		elif rnd == 3:
