@@ -17,6 +17,15 @@ NREGS = 1 << LOG2_NR
 REG_INDEX_SP = 6
 
 
+def sext(value, pair=False):
+	value = value & bitmask(pair)
+	if pair:
+		if sext and (value & (1 << (PAIR_BITS - 1))) != 0: return value - (1 << PAIR_BITS)
+		else: return value
+	else:
+		if sext and (value & (1 << (REG_BITS - 1))) != 0: return value - (1 << REG_BITS)
+		else: return value
+
 def szext(value, pair=False, sext=False):
 	if pair: return value
 	value = value & REG_BITS_MASK
@@ -95,7 +104,8 @@ class BinopNum(Enum):
 
 class ShiftopNum(Enum):
 	ROR = 0
-	SHR = 1
+	SAR = 1
+	SHR = 2
 
 
 class Arg:
@@ -648,6 +658,7 @@ class Shift(Instruction):
 		arg2 = arg2 & 15
 
 		if   self.shiftop == ShiftopNum.ROR: result = ((arg1 | (arg1 << nbits(self.wide))) >> (arg2 if self.wide else (arg2 & 7))) & bitmask(self.wide)
+		elif self.shiftop == ShiftopNum.SAR: result = sext(arg1, pair=self.wide) >> arg2
 		elif self.shiftop == ShiftopNum.SHR: result = arg1 >> arg2
 		else: assert False # not implemented
 
@@ -662,6 +673,7 @@ class Shift(Instruction):
 		extra = []
 
 		if   self.shiftop == ShiftopNum.ROR: aaa = 0
+		elif self.shiftop == ShiftopNum.SAR: aaa = 2
 		elif self.shiftop == ShiftopNum.SHR: aaa = 4
 		else: assert False # not supported
 

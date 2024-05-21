@@ -348,6 +348,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire use_rotate = (cls == CLASS_SHIFT);
 	wire rotate_only = use_rotate & (d == 0); // Differentias between the two shift forms
 	wire use_shr = shift_op[2];
+	wire use_sar = shift_op[1];
 	wire [ROTATE_COUNT_BITS-1:0] rotate_count = imm_full[ROTATE_COUNT_BITS-1:0];
 
 	assign feed_imm8 = (cls == CLASS_SHIFT) && data_stage;
@@ -369,7 +370,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),
-		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .rotate_count(rotate_count),
+		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .use_sar(use_sar), .rotate_count(rotate_count),
 		.do_swap(do_swap),
 		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data_in2), .next_imm_data(sc_next_imm_data),
