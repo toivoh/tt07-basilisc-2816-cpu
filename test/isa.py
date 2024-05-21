@@ -82,7 +82,7 @@ def bitmask(pair): return PAIR_BITS_MASK if pair else REG_BITS_MASK
 
 class BinopNum(Enum):
 	ADD = 0
-	SUB = 1
+	SUB = 1 # Interpeted as revsub when arg2 is an imm6
 	ADC = 2
 	SBC = 3
 	AND = 4
@@ -456,6 +456,10 @@ class Binop(Instruction):
 		arg2 = arg2 & bitmask(self.wide)
 
 		update_dest = True
+
+		# replace sub r, imm6 with revsub r, imm6
+		if isinstance(self.arg2, ArgImm6) and self.binop in (BinopNum.SUB, BinopNum.SBC):
+			arg1, arg2 = arg2, arg1
 
 		if   self.binop == BinopNum.ADD:  result = arg1 + arg2
 		elif self.binop == BinopNum.SUB:  result = arg1 - arg2 + (bitmask(self.wide)+1)

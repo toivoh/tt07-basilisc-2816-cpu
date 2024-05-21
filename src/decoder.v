@@ -354,6 +354,9 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire do_swap = (cls == CLASS_SWAP);
 
+	// replace sub r, imm6 with revsub r, imm6
+	wire force_reverse_args = (cls == CLASS_ALU) && (aaa == `OP_SUB || aaa == `OP_SBC) && (mdz == 3'b101);
+
 	scheduler #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
 		.clk(clk), .reset(reset),
 		.inst_valid(inst_valid), .inst_done(sc_inst_done),
@@ -362,6 +365,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.src(src), .reg_src(reg_src), .src_sext2(src_sext2), .double_src2(double_src2),
 		.addr_wide2(addr_wide2), .addr_op(addr_op), .addr_reg1(addr_reg1), .addr_src(addr_src), .reg_addr_src(addr_reg2),
 		.addr_src_sext2(addr_src_sext2), .update_dest(update_dest),
+		.force_reverse_args(force_reverse_args),
 		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),

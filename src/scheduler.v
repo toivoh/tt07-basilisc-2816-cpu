@@ -27,6 +27,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire src_sext2,
 		input wire double_src2,
 		input wire update_dest,
+		input wire force_reverse_args,
 
 		input wire addr_wide2,
 		input wire [`ADDR_OP_BITS-1:0] addr_op,
@@ -242,7 +243,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire [LOG2_NR-1:0] reg2 = addr_stage ? reg_addr_src : reg_src;
 	wire [NSHIFT-1:0] data_in = curr_src_imm ? imm_data_in : rx_pins; // Must wait for rx_pins to contain the right data
 	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && ((dest == `DEST_REG) || do_swap) && update_dest);
-	wire reverse_args = data_stage && (dest == `DEST_MEM) && !curr_src_imm; // Can we have an immediate source and a memory destination at the same time?
+	wire reverse_args = data_stage && ((dest == `DEST_MEM) && !curr_src_imm) || force_reverse_args; // Can we have an immediate source and a memory destination at the same time?
 
 	// Should we double r8 in [r16 + r8] for 16 bit wide operations?
 	// SRC_IMM2 case also captures autoincrement/decrement

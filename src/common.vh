@@ -5,7 +5,7 @@
 `define OP_BIT_WCARRY 1
 
 `define OP_ADD 3'd0
-`define OP_SUB 3'd1
+`define OP_SUB 3'd1 // Interpeted as revsub when arg2 is an imm6
 `define OP_ADC 3'd2
 `define OP_SBC 3'd3
 `define OP_AND 3'd4

@@ -247,8 +247,11 @@ async def test_cpu(dut):
 				exec(Binop(BinopNum.MOV, ArgReg(False, 0), ArgImm8(False, r[i])))
 				exec(Binop(BinopNum.SUB, ArgReg(False, 0), ArgImm6(False, r[j])))
 
+				si, sj = sj, si # compensate for using revsub
+
 				ui = si & 255
 				uj = sj & 255
+
 				res = (ui - uj) & 255
 
 				if cc == dut.CC_ALWAYS.value: taken = True
