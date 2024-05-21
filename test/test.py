@@ -71,10 +71,10 @@ async def test_cpu0(dut):
 		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgImm6(False, 12)))
-			#encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
+			encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
 
-			encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 12)))
-			encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgReg(False, 2)))
+			#encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 12)))
+			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgReg(False, 2)))
 
 		if False:
 			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0xe4a5)))

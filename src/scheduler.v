@@ -144,6 +144,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	localparam STAGE_ROTATE = 3;
 	localparam STAGE_BIT_ANY_ROTATE = 1; // as long this bit is set, it is a rotate stage
 
+	wire any_rotate_stage;
 	wire do_ror1;
 	wire ror1_stage;
 
@@ -156,10 +157,10 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		if (reset || inst_done) begin
 			stage <= STAGE0;
 			last_ror1 <= 0;
-		end else if (skip_stage) begin
+		end else if (skip_stage && !any_rotate_stage) begin
 			stage <= STAGE_ROR1;
 			last_ror1 <= 0;
-		end else if (op_done) begin
+		end else if (op_done || skip_stage) begin
 			if (ror1_stage && do_ror1 && !last_ror1) begin
 				last_ror1 <= 1;
 			end else begin
@@ -177,14 +178,15 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	assign need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM); // Assume need_addr means that we send a read during the address stage
 	assign addr_stage = (stage == STAGE0) && need_addr;
-	wire any_rotate_stage = stage[STAGE_BIT_ANY_ROTATE];
+	assign any_rotate_stage = stage[STAGE_BIT_ANY_ROTATE];
 	assign ror1_stage = stage == STAGE_ROR1;
 	wire rotate_stage = stage == STAGE_ROTATE;
 	assign data_stage = !any_rotate_stage && !addr_stage;
 
 	assign inst_done = (op_done && (use_rotate ? rotate_stage : data_stage)) || (skip && !wait_for_imm16);
 
-	assign skip_stage = inst_valid && rotate_only && !any_rotate_stage; // TODO: Allow to run address and data stages for rotates
+	// TODO: Might need to keep the ror1 stage even if rotate_count is even
+	assign skip_stage = inst_valid && (rotate_only && !any_rotate_stage) || (ror1_stage && (rotate_count[0] == 0));
 
 	// Stage properties
 	// ----------------
