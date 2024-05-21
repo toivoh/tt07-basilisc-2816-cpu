@@ -213,7 +213,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	assign block_prefetch = execute && access_pc;
 	assign write_pc_now   = execute && write_pc && prefetch_idle;
 
-	assign reserve_tx     = execute && will_write;
+	assign reserve_tx     = execute && will_write && !do_swap; // Swaps never wait to start a transaction after initial access, so don't need to reserve
 
 	// tx_reply_wanted should be constant between the address and data stages so that the data stage knows if it should wait for data.
 	// !((dest == `DEST_MEM) && (op == `OP_MOV)) should detect a mov [addr], reg,
@@ -227,17 +227,21 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// Wait to start
 	// -------------
 	wire wait_for_mem = data_stage && need_addr && tx_reply_wanted;
+	wire do_swap_data = do_swap && data_stage;
 
 	// Wait conditions shared by command start and alu enable. If no command should be sent this stage, the ALU needs to wait for them anyway.
 	wire both_wait = access_pc && !prefetch_idle;
+	wire tx_data_wait = (send_command && !(command_active && tx_data_next));
 	// These conditions assume that we're receiving the right RX message; the one with the data we just asked for.
 	// Which we do since the scheduler will only have one outstanding read that it waits to respond to.
-	wire command_wait = both_wait || (wait_for_mem && !rx_started);
-	wire alu_wait     = both_wait || (wait_for_mem && !rx_data_valid) || (send_command && !(command_active && tx_data_next)); // Shouldn't need to check that this is the right RX data, no other can be outstanding
+	wire command_wait = both_wait || (wait_for_mem && !rx_started && !do_swap_data);
+	wire alu_wait     = both_wait || (wait_for_mem && !rx_data_valid) || (tx_data_wait && !do_swap_data); // Shouldn't need to check that this is the right RX data, no other can be outstanding
+	wire regfile_wait = do_swap_data ? tx_data_wait : alu_wait;
 
 	// We might still wait for the command to be started when tx_command_valid is high. But hopefully not if it is a response to incoming data (then reserve_tx will have been held high since the read was sent).
-	assign tx_command_valid = execute && !command_wait && send_command;
+	assign tx_command_valid = execute && !command_wait && send_command && !command_active;
 	wire alu_en             = execute && !alu_wait;
+	wire regfile_en         = execute && (!regfile_wait || !alu_wait); // regfile_en should be high whenever alu_en is
 
 	// Advance external data sources and feed data sinks
 	// -------------------------------------------------
@@ -287,7 +291,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	ALU #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) alu (
 		.clk(clk), .reset(reset),
-		.op_done(op_done), .op_valid(alu_en),
+		.op_done(op_done), .regfile_en(regfile_en), .advance(alu_en),
 		.operation(operation),
 		.external_arg1(external_arg1), .external_arg2(external_arg2),
 		.pair_op(pair_op), .pair_op2(pair_op2), .sext2(sext2), .arg2_limit_length(arg2_limit_length),

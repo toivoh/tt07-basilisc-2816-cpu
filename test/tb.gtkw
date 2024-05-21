@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Thu May 23 09:41:36 2024
+[*] Fri May 24 06:45:39 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.vcd"
-[dumpfile_mtime] "Thu May 23 09:37:03 2024"
-[dumpfile_size] 24187185
+[dumpfile_mtime] "Fri May 24 06:45:05 2024"
+[dumpfile_size] 40358771
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.gtkw"
-[timestart] 853310000
+[timestart] 137580000
 [size] 2463 1372
 [pos] -1 -1
-*-23.000000 924650000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 150490000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.cpu.
@@ -34,6 +34,15 @@ tb.top.cpu.pref.pc_data_in[1:0]
 @200
 -
 @28
+tb.top.cpu.pf_tx_command_valid
+@29
+tb.top.cpu.sc_tx_command_valid
+@28
+tb.top.cpu.tx_command_started
+tb.top.cpu.tx_command[1:0]
+@200
+-
+@28
 tb.top.cpu.sc_tx
 tb.top.cpu.sc_tx_command_valid
 tb.top.cpu.tx_command_started
@@ -42,8 +51,13 @@ tb.top.cpu.tx_command_started
 @28
 tb.top.cpu.dec.sched.tx_data_next
 tb.top.cpu.tx_reply_wanted
+tb.top.cpu.sc_reserve_tx
 @200
 -
+@28
+tb.top.cpu.dec.sched.regfile_en
+tb.top.cpu.dec.sched.alu_en
+@200
 -
 @22
 tb.r0[7:0]
@@ -91,6 +105,11 @@ tb.top.cpu.dec.use_shr
 @200
 -
 -scheduler
+@28
+tb.top.cpu.dec.sched.rx_started
+tb.top.cpu.dec.sched.rx_data_valid
+@200
+-
 @28
 tb.top.cpu.dec.sched.stage[1:0]
 tb.top.cpu.dec.sched.addr_stage
@@ -223,7 +242,6 @@ tb.top.cpu.pref.pc_data_out[1:0]
 -
 -ALU
 @28
-tb.top.cpu.dec.sched.alu.op_valid
 tb.top.cpu.dec.sched.alu.reverse_args
 @200
 -
@@ -231,7 +249,6 @@ tb.top.cpu.dec.sched.alu.reverse_args
 tb.top.cpu.dec.sched.alu.data_in1[1:0]
 tb.top.cpu.dec.sched.alu.data_in2[1:0]
 tb.top.cpu.dec.sched.alu.result[1:0]
-@29
 tb.top.cpu.dec.sched.alu.data_out[1:0]
 @200
 -

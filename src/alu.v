@@ -13,8 +13,8 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		// Raised on last cycle of op: Must get a new op on next cycle or get op_valid = 0
 		output wire op_done,
 
-		// Once op_valid has become 1, it and the operation parameters must remain stable until op_done is raised
-		input wire op_valid,
+		// Normally, both regfile_en and advance should be high together to advance the ALU operation
+		input wire regfile_en, advance,
 		input wire [OP_BITS-1:0] operation, // which operation to perform, according to what?
 		input wire external_arg1, external_arg2, // if true, arg1/arg2 is taken from data_in, otherwise from regfile[reg2]
 		input wire pair_op, pair_op2, sext2, // sign/zero extend if pair_op && !pair_op2
@@ -63,7 +63,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	localparam OP_MOV = `OP_MOV;
 
 
-	assign active = op_valid;
+	assign active = advance;
 
 	reg [STATE_BITS-1:0] state; // Counts through the steps of an operation
 	wire [STATE_BITS+1-1:0] inc_state = state + active;
@@ -99,8 +99,8 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	//wire single_reg = (operation == OP_MOV) || external_arg2;
 	wire single_reg = external_arg2;
 
-	wire do_scan  = op_valid;
-	wire do_scan2 = op_valid && (!single_reg || rotate);
+	wire do_scan  = regfile_en;
+	wire do_scan2 = regfile_en && (!single_reg || rotate);
 
 	wire [NSHIFT-1:0] arg1, arg2_0, arg2;
 	//assign arg1 = scan_out;

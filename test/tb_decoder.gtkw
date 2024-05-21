@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Thu May 23 09:41:35 2024
+[*] Fri May 24 06:45:41 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.vcd"
-[dumpfile_mtime] "Thu May 23 09:35:56 2024"
-[dumpfile_size] 10916258
+[dumpfile_mtime] "Fri May 24 06:39:18 2024"
+[dumpfile_size] 14549496
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.gtkw"
-[timestart] 1388370000
+[timestart] 590430000
 [size] 2988 1720
 [pos] -1 -1
-*-23.000000 1468640000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 205950000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb_decoder.
 [treeopen] tb_decoder.dec.
 [treeopen] tb_decoder.dec.sched.
@@ -48,10 +48,33 @@ tb_decoder.r7[7:0]
 @200
 -
 @28
-tb_decoder.dec.sched.alu.op_valid
 tb_decoder.dec.sched.alu.op_done
 tb_decoder.dec.sched.inst_valid
 tb_decoder.dec.sched.inst_done
+@200
+-
+@28
+tb_decoder.dec.sched.tx_reply_wanted
+tb_decoder.mem_if.tx_command_started
+tb_decoder.mem_if.tx_data_next
+@200
+-
+@28
+tb_decoder.mem_if.rx_started
+@29
+tb_decoder.mem_if.rx_data_valid
+@200
+-
+@28
+tb_decoder.dec.sched.do_swap
+tb_decoder.dec.sched.alu.regfile_en
+tb_decoder.dec.sched.alu.advance
+tb_decoder.dec.sched.regfile_wait
+tb_decoder.dec.sched.alu_wait
+tb_decoder.dec.sched.both_wait
+tb_decoder.dec.sched.command_wait
+tb_decoder.dec.sched.tx_data_wait
+tb_decoder.dec.sched.wait_for_mem
 @200
 -
 @28
@@ -141,9 +164,7 @@ tb_decoder.dec.sched.rotate_stage
 tb_decoder.dec.sched.alu.operation[2:0]
 tb_decoder.dec.sched.alu.arg2_0[1:0]
 tb_decoder.dec.sched.alu.arg2[1:0]
-@29
 tb_decoder.dec.sched.alu.arg2_s[1:0]
-@28
 tb_decoder.dec.sched.alu.result[1:0]
 tb_decoder.dec.sched.alu.scan_in[1:0]
 tb_decoder.dec.sched.alu.arg2_6bit
