@@ -162,7 +162,8 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			wide = aaa[2] == 0;
 			cls = CLASS_MOV; // may be overridden below
 			r = {rr, aaa[1] & !wide};
-			shift_op = imm6[5:3];
+			//shift_op = imm6[5:3];
+			shift_op = {imm6[5:4], 1'b0}; // imm6[3:0] is used for shift count
 			//if (wide) shift_op[0] = m; // imm6[3] is needed as part of the the shift amount
 
 			if (aaa[0] == 0) begin
@@ -321,7 +322,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire [LOG2_NR-1:0] arg1_reg = r;
 
-	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : ((cls == CLASS_ALU) ? binop : `OP_MOV);
+	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : (use_rol ? `OP_SUB : ((cls == CLASS_ALU) ? binop : `OP_MOV));
 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
 	wire update_other_flags = (cls == CLASS_ALU || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
@@ -347,9 +348,14 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire use_rotate = (cls == CLASS_SHIFT);
 	wire rotate_only = use_rotate & (d == 0); // Differentias between the two shift forms
-	wire use_shr = shift_op[2];
-	wire use_sar = shift_op[1];
+	//wire use_shr = shift_op[2];
+	//wire use_sar = shift_op[1];
+	wire use_shr = shift_op[2:1] == 2'b10;
+	wire use_sar = shift_op[2:1] == 2'b01;
+	wire use_rol = use_rotate && shift_op[0];
 	wire [ROTATE_COUNT_BITS-1:0] rotate_count = imm_full[ROTATE_COUNT_BITS-1:0];
+
+	wire src1_zero = use_rol;
 
 	assign feed_imm8 = (cls == CLASS_SHIFT) && data_stage;
 
@@ -362,7 +368,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.clk(clk), .reset(reset),
 		.inst_valid(inst_valid), .inst_done(sc_inst_done),
 		.wide(wide), .wide2(wide2),
-		.op(op), .dest(dest), .reg_dest(reg_dest), .src1_from_pc(src1_from_pc),
+		.op(op), .dest(dest), .reg_dest(reg_dest), .src1_from_pc(src1_from_pc), .src1_zero(src1_zero),
 		.src(src), .reg_src(reg_src), .src_sext2(src_sext2), .double_src2(double_src2),
 		.addr_wide2(addr_wide2), .addr_op(addr_op), .addr_reg1(addr_reg1), .addr_src(addr_src), .reg_addr_src(addr_reg2),
 		.addr_src_sext2(addr_src_sext2), .update_dest(update_dest),

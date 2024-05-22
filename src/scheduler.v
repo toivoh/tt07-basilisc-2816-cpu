@@ -22,6 +22,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire [`DEST_BITS-1:0] dest,
 		input wire [LOG2_NR-1:0] reg_dest,
 		input wire src1_from_pc, // Replace src1 with pc?
+		input wire src1_zero,
 		input wire [`SRC_BITS-1:0] src,
 		input wire [LOG2_NR-1:0] reg_src,
 		input wire src_sext2,
@@ -269,7 +270,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	wire [2:0] arg2_limit_length = {(addr_src == `SRC_IMM7) && addr_stage, (src == `SRC_IMM6) && data_stage, (addr_src == `SRC_IMM2) && addr_stage || (src == `SRC_IMM2 && data_stage)};
 	wire output_scan_out = addr_stage && addr_just_reg1;
-	wire external_arg1 = data_stage && src1_from_pc;
+	wire external_arg1 = data_stage && (src1_from_pc || src1_zero);
 
 	wire rotate = any_rotate_stage;
 	wire timed_rotate = rotate_stage;
@@ -294,7 +295,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.rotate(rotate), .timed_rotate(timed_rotate), .do_shr(do_shr), .do_sar(do_sar), .do_ror1(do_ror1), .last_ror1(last_ror1), .rotate_count(rotate_count[ROTATE_COUNT_BITS-1:1]),
 		.do_swap_reg(do_swap_reg), .do_swap_mem(do_swap_mem),
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
-		.active(active), .data_in1(pc_data_in), .data_in2(data_in), .data_out(data_out),
+		.active(active), .data_in1(src1_zero ? '0 : pc_data_in), .data_in2(data_in), .data_out(data_out),
 		.counter(comp_counter)
 	);
 endmodule : scheduler

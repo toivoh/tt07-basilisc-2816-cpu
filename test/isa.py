@@ -104,8 +104,9 @@ class BinopNum(Enum):
 
 class ShiftopNum(Enum):
 	ROR = 0
-	SAR = 1
-	SHR = 2
+	SAR = 2
+	SHR = 4
+	ROL = 7
 
 
 class Arg:
@@ -658,6 +659,7 @@ class Shift(Instruction):
 		arg2 = arg2 & 15
 
 		if   self.shiftop == ShiftopNum.ROR: result = ((arg1 | (arg1 << nbits(self.wide))) >> (arg2 if self.wide else (arg2 & 7))) & bitmask(self.wide)
+		elif self.shiftop == ShiftopNum.ROL: result = ((arg1 | (arg1 << nbits(self.wide))) >> ((-arg2) & 15 if self.wide else ((-arg2) & 7))) & bitmask(self.wide)
 		elif self.shiftop == ShiftopNum.SAR: result = sext(arg1, pair=self.wide) >> arg2
 		elif self.shiftop == ShiftopNum.SHR: result = arg1 >> arg2
 		else: assert False # not implemented
@@ -672,10 +674,7 @@ class Shift(Instruction):
 		reg1 = self.arg1.get_reg()
 		extra = []
 
-		if   self.shiftop == ShiftopNum.ROR: aaa = 0
-		elif self.shiftop == ShiftopNum.SAR: aaa = 2
-		elif self.shiftop == ShiftopNum.SHR: aaa = 4
-		else: assert False # not supported
+		aaa = self.shiftop.value
 
 		if isinstance(self.arg2, ArgImm6):
 			# 111111

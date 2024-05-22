@@ -78,10 +78,11 @@ async def test_cpu0(dut):
 		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgImm6(False, 12)))
-			encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
+			#encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
 
-			#encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 12)))
+			encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 12)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgReg(False, 2)))
+			encode(Shift(ShiftopNum.ROL, ArgReg(True, 0), ArgReg(False, 2)))
 
 		if False:
 			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0xe4a5)))
@@ -321,9 +322,13 @@ async def test_cpu(dut):
 				print("Call" if call else "Jump")
 		elif rnd <= 2:
 			wide = randbool()
-			if randbool(): arg2 = ArgImm6(False, randrange(16))
-			else: arg2 = rand_arg(False, is_src=True, zp_ok=False)
-			inst = Shift(choice([ShiftopNum.ROR, ShiftopNum.SHR]), rand_arg_reg(wide), arg2)
+			if randbool():
+				arg2 = ArgImm6(False, randrange(16))
+				shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR]) # ROL is not supported for immediate; can just use ROR instead
+			else:
+				arg2 = rand_arg(False, is_src=True, zp_ok=False)
+				shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
+			inst = Shift(shiftop, rand_arg_reg(wide), arg2)
 		elif rnd == 3:
 			wide = randbool()
 			if randrange(4) == 0: arg2 = rand_arg_reg(wide)
