@@ -157,7 +157,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		if (reset || inst_done) begin
 			stage <= STAGE0;
 			last_ror1 <= 0;
-		end else if (skip_stage && !any_rotate_stage) begin
+		end else if ((op_done && data_stage) || skip_stage && !any_rotate_stage) begin
 			stage <= STAGE_ROR1;
 			last_ror1 <= 0;
 		end else if (op_done || skip_stage) begin
