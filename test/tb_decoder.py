@@ -63,9 +63,9 @@ async def test_decoder(dut):
 				inst = Swap(rand_arg_reg(wide), arg2)
 			elif rnd <= 2:
 				#arg2 = ArgImm6(False, randrange(16))
-				shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
+				shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL, ShiftopNum.SHL])
 				if randbool():
-					arg2 = ArgImm6(False, randrange(16))
+					arg2 = ArgImm6(False, randrange(8 if shiftop == ShiftopNum.SHL and not wide else 16))
 					#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR]) # ROL is not supported for immediate; can just use ROR instead
 				else:
 					arg2 = rand_arg(False, is_src=True, zp_ok=False)

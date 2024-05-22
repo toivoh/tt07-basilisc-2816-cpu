@@ -76,10 +76,10 @@ async def test_cpu0(dut):
 			encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 5)))
 
 		if False:
-			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
+			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgImm6(False, 12)))
 			#encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
-			encode(Shift(ShiftopNum.SHL, ArgReg(True, 0), ArgImm6(False, 4)))
+			#encode(Shift(ShiftopNum.SHL, ArgReg(True, 0), ArgImm6(False, 4)))
 
 			#encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 12)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgReg(False, 2)))
@@ -88,6 +88,9 @@ async def test_cpu0(dut):
 			#encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 4)))
 			#encode(Shift(ShiftopNum.SHL, ArgReg(True, 0), ArgReg(False, 2)))
 			#encode(Shift(ShiftopNum.SHL, ArgReg(False, 0), ArgReg(False, 2)))
+
+			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, -1)))
+			encode(Shift(ShiftopNum.SHL, ArgReg(True, 0), ArgImm6(False, 5)))
 
 		if False:
 			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0xe4a5)))
@@ -261,7 +264,7 @@ async def test_cpu(dut):
 	# Try all even shl shift steps
 	for wide in [False, True]:
 		for use_immediate in [False, True]:
-			for shift_step in range(0, 15 if wide else 7, 2):
+			for shift_step in range(15 if wide else 7):
 				exec(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, -1)))
 				if use_immediate:
 					exec(Shift(ShiftopNum.SHL, ArgReg(wide, 0), ArgImm6(False, shift_step)))
@@ -345,9 +348,9 @@ async def test_cpu(dut):
 				print("Call" if call else "Jump")
 		elif rnd <= 2:
 			wide = randbool()
-			shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
+			shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL, ShiftopNum.SHL])
 			if randbool():
-				arg2 = ArgImm6(False, randrange(16))
+				arg2 = ArgImm6(False, randrange(8 if shiftop == ShiftopNum.SHL and not wide else 16))
 				#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR]) # ROL is not supported for immediate; can just use ROR instead
 			else:
 				arg2 = rand_arg(False, is_src=True, zp_ok=False)

@@ -663,7 +663,7 @@ class Shift(Instruction):
 		elif self.shiftop == ShiftopNum.ROL: result = ((arg1 | (arg1 << nbits(self.wide))) >> ((-arg2) & 15 if self.wide else ((-arg2) & 7))) & bitmask(self.wide)
 		elif self.shiftop == ShiftopNum.SAR: result = sext(arg1, pair=self.wide) >> arg2
 		elif self.shiftop == ShiftopNum.SHR: result = arg1 >> arg2
-		elif self.shiftop == ShiftopNum.SHL: result = arg1 << arg2
+		elif self.shiftop == ShiftopNum.SHL: result = arg1 << (arg2 if self.wide else (arg2 & 7))
 		else: assert False # not implemented
 
 		result = result & bitmask(self.wide)

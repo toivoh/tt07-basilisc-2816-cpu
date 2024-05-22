@@ -154,11 +154,13 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 	wire [NSHIFT-1:0] scan_in_regular = update_reg1 ? (do_swap_mem ? data_in2 : result) : scan_out;
 
-	wire shift_in_zeros = do_shr || (do_shl && (state >= rotate_count));
+	wire shift_in_zeros = do_shr || (do_shl && (last_ror1 || (state > rotate_count) || ((state == rotate_count) && !do_ror1)));
 
 	wire [NSHIFT-1:0] scan_in_rotate_regular = do_sar ? {NSHIFT{carry}} : (shift_in_zeros ? 2'b0 : scan_out2);
 	wire scan_in_ror1_msb = last_ror1 ? (do_sar ? carry : (do_shr ? 1'b0 : scan_out2[NSHIFT-1:1])) : scan_out2[NSHIFT-1-1:0];
-	wire [NSHIFT-1:0] scan_in_ror1 = {scan_in_ror1_msb, carry};
+
+	wire [NSHIFT-1:0] scan_in_ror1 = {(!(shift_in_zeros && do_shl) || last_ror1) && scan_in_ror1_msb, !(shift_in_zeros && do_shl) && carry};
+
 	wire [NSHIFT-1:0] scan_in_rotate = do_ror1 ? scan_in_ror1 : scan_in_rotate_regular;
 	assign scan_in = rotate ? scan_in_rotate : scan_in_regular;
 
