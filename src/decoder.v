@@ -352,8 +352,11 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	//wire use_sar = shift_op[1];
 	wire use_shr = shift_op[2:1] == 2'b10;
 	wire use_sar = shift_op[2:1] == 2'b01;
-	wire use_rol = use_rotate && shift_op[0];
-	wire [ROTATE_COUNT_BITS-1:0] rotate_count = imm_full[ROTATE_COUNT_BITS-1:0];
+	wire use_shl = (shift_op == 3'b110);
+	wire use_rol = use_rotate && (shift_op[0] || use_shl); // should be active also for shl
+
+	wire rcount_msb_mask = !(use_rotate && !wide && !(use_sar || use_shr)); // sar and shr can shift a byte > 7 steps to yield the sign/zero.
+	wire [ROTATE_COUNT_BITS-1:0] rotate_count = {imm_full[ROTATE_COUNT_BITS-1] & rcount_msb_mask, imm_full[ROTATE_COUNT_BITS-1-1:0]};
 
 	wire src1_zero = use_rol;
 
@@ -376,7 +379,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),
-		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .use_sar(use_sar), .rotate_count(rotate_count),
+		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .use_sar(use_sar), .use_shl(use_shl), .rotate_count(rotate_count),
 		.do_swap(do_swap),
 		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data_in2), .next_imm_data(sc_next_imm_data),

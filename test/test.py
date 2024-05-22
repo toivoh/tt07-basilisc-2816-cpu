@@ -79,10 +79,15 @@ async def test_cpu0(dut):
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgImm6(False, 12)))
 			#encode(Shift(ShiftopNum.SHR, ArgReg(True, 0), ArgImm6(False, 4)))
+			encode(Shift(ShiftopNum.SHL, ArgReg(True, 0), ArgImm6(False, 4)))
 
-			encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 12)))
+			#encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 12)))
 			#encode(Shift(ShiftopNum.ROR, ArgReg(True, 0), ArgReg(False, 2)))
-			encode(Shift(ShiftopNum.ROL, ArgReg(True, 0), ArgReg(False, 2)))
+			#encode(Shift(ShiftopNum.ROL, ArgReg(True, 0), ArgReg(False, 2)))
+
+			#encode(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, 4)))
+			#encode(Shift(ShiftopNum.SHL, ArgReg(True, 0), ArgReg(False, 2)))
+			#encode(Shift(ShiftopNum.SHL, ArgReg(False, 0), ArgReg(False, 2)))
 
 		if False:
 			#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0xe4a5)))
@@ -250,6 +255,24 @@ async def test_cpu(dut):
 	#	exec(Binop(BinopNum.MOV, ArgReg(False, i), ArgImm8(False, state.get_reg(i))))
 	#exec(Binop(BinopNum.SUB, ArgMemR16PlusR8(False, 2, 7), ArgReg(False, 5))) # Test instruction
 
+	# Intialize all registers to avoid problems with X
+	for i in range(0, 8, 2): exec(Binop(BinopNum.MOV, ArgReg(True, i), ArgImm8(True, 0)))
+
+	# Try all even shl shift steps
+	for wide in [False, True]:
+		for use_immediate in [False, True]:
+			for shift_step in range(0, 15 if wide else 7, 2):
+				exec(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, -1)))
+				if use_immediate:
+					exec(Shift(ShiftopNum.SHL, ArgReg(wide, 0), ArgImm6(False, shift_step)))
+				else:
+					exec(Binop(BinopNum.MOV, ArgReg(False, 2), ArgImm8(False, shift_step)))
+					exec(Shift(ShiftopNum.SHL, ArgReg(wide, 0), ArgReg(False, 2)))
+
+				# Read out the state so that the MockRAMEmulator will check it; just read the first four registers
+				for i in range(1):
+					exec(Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 4*i, 0), ArgReg(True, 4*i+2)))
+
 	# Test byte compare (sub) plus branch
 	# TODO: Test the conditional branches more directly
 	for cc in [dut.CC_ALWAYS.value, dut.CC_Z.value, dut.CC_NZ.value, dut.CC_S.value, dut.CC_NS.value, dut.CC_C.value, dut.CC_NC.value, dut.CC_A.value, dut.CC_NA.value, dut.CC_V.value, dut.CC_NV.value, dut.CC_G.value, dut.CC_NG.value]:
@@ -322,12 +345,13 @@ async def test_cpu(dut):
 				print("Call" if call else "Jump")
 		elif rnd <= 2:
 			wide = randbool()
+			shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
 			if randbool():
 				arg2 = ArgImm6(False, randrange(16))
-				shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR]) # ROL is not supported for immediate; can just use ROR instead
+				#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR]) # ROL is not supported for immediate; can just use ROR instead
 			else:
 				arg2 = rand_arg(False, is_src=True, zp_ok=False)
-				shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
+				#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
 			inst = Shift(shiftop, rand_arg_reg(wide), arg2)
 		elif rnd == 3:
 			wide = randbool()

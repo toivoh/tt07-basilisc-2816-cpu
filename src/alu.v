@@ -24,7 +24,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		input wire output_scan_out,
 		input wire update_carry_flags, update_other_flags,
 
-		input wire rotate, timed_rotate, do_shr, do_sar, do_ror1, last_ror1,
+		input wire rotate, timed_rotate, do_shr, do_sar, do_shl, do_ror1, last_ror1,
 		input wire [$clog2(REG_BITS*2/NSHIFT)-1:0] rotate_count,
 
 		input wire do_swap_reg, do_swap_mem,
@@ -154,7 +154,9 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 	wire [NSHIFT-1:0] scan_in_regular = update_reg1 ? (do_swap_mem ? data_in2 : result) : scan_out;
 
-	wire [NSHIFT-1:0] scan_in_rotate_regular = do_sar ? {NSHIFT{carry}} : (do_shr ? 2'b0 : scan_out2);
+	wire shift_in_zeros = do_shr || (do_shl && (state >= rotate_count));
+
+	wire [NSHIFT-1:0] scan_in_rotate_regular = do_sar ? {NSHIFT{carry}} : (shift_in_zeros ? 2'b0 : scan_out2);
 	wire scan_in_ror1_msb = last_ror1 ? (do_sar ? carry : (do_shr ? 1'b0 : scan_out2[NSHIFT-1:1])) : scan_out2[NSHIFT-1-1:0];
 	wire [NSHIFT-1:0] scan_in_ror1 = {scan_in_ror1_msb, carry};
 	wire [NSHIFT-1:0] scan_in_rotate = do_ror1 ? scan_in_ror1 : scan_in_rotate_regular;

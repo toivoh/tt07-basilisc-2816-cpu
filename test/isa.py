@@ -106,6 +106,7 @@ class ShiftopNum(Enum):
 	ROR = 0
 	SAR = 2
 	SHR = 4
+	SHL = 6
 	ROL = 7
 
 
@@ -662,7 +663,10 @@ class Shift(Instruction):
 		elif self.shiftop == ShiftopNum.ROL: result = ((arg1 | (arg1 << nbits(self.wide))) >> ((-arg2) & 15 if self.wide else ((-arg2) & 7))) & bitmask(self.wide)
 		elif self.shiftop == ShiftopNum.SAR: result = sext(arg1, pair=self.wide) >> arg2
 		elif self.shiftop == ShiftopNum.SHR: result = arg1 >> arg2
+		elif self.shiftop == ShiftopNum.SHL: result = arg1 << arg2
 		else: assert False # not implemented
+
+		result = result & bitmask(self.wide)
 
 		#print("shift(", self.wide, ", ", self.shiftop, ", ", hex(arg1), ", ", hex(arg2), ") =", hex(result))
 		print("shift(", self.wide, ", ", self.shiftop, ", ", str(self.arg1), ":", hex(arg1), ", ", str(self.arg2), ":", hex(arg2), ") =", hex(result))
@@ -687,6 +691,15 @@ class Shift(Instruction):
 
 			arg2_enc = self.arg2.encode(T=ArgImm6, extra_dest=extra)
 			assert 0 <= arg2_enc <= 15
+
+			if self.shiftop == ShiftopNum.SHL:
+				if not self.wide: assert 0 <= arg2_enc <= 7
+				arg2_enc = (-arg2_enc) & (15 if self.wide else 7)
+
+			if self.shiftop == ShiftopNum.ROL:
+				# Convert rol to ror
+				arg2_enc = (-arg2_enc) & (15 if self.wide else 7)
+				aaa = ShiftopNum.ROR.value
 
 			assert (aaa & 1) == 0
 			bb = aaa >> 1

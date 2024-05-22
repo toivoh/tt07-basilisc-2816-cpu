@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Tue May 21 11:10:18 2024
+[*] Wed May 22 09:49:34 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.vcd"
-[dumpfile_mtime] "Tue May 21 11:05:38 2024"
-[dumpfile_size] 25564453
+[dumpfile_mtime] "Wed May 22 09:48:01 2024"
+[dumpfile_size] 212930
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.gtkw"
-[timestart] 118010000
+[timestart] 78660000
 [size] 2463 1372
 [pos] -1 -1
-*-23.000000 158230000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 120050000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.cpu.
@@ -99,9 +99,8 @@ tb.top.cpu.dec.sched.ror1_stage
 tb.top.cpu.dec.sched.rotate_stage
 @200
 -
-@29
-tb.top.cpu.dec.sched.skip_stage
 @28
+tb.top.cpu.dec.sched.skip_stage
 tb.top.cpu.dec.sched.execute
 tb.top.cpu.dec.sched.alu_en
 @200
@@ -116,6 +115,20 @@ tb.top.cpu.dec.sched.tx_command_valid
 -
 @28
 tb.top.cpu.dec.do_swap
+@200
+-
+@28
+tb.top.cpu.dec.use_rotate
+tb.top.cpu.dec.use_shr
+tb.top.cpu.dec.use_sar
+tb.top.cpu.dec.use_rol
+tb.top.cpu.dec.use_shl
+@200
+-
+@22
+tb.top.cpu.dec.sched.rotate_count[3:0]
+@28
+tb.top.cpu.dec.sched.no_op
 @200
 -
 @28
@@ -193,7 +206,7 @@ tb.top.cpu.pref.sreg[15:0]
 -
 @28
 tb.top.cpu.pref.last_valid
-@22
+@23
 tb.top.cpu.pref.last_entry[15:0]
 @200
 -
@@ -221,6 +234,7 @@ tb.top.cpu.dec.sched.alu.arg2_2bit
 @28
 tb.top.cpu.dec.sched.alu.update_reg1
 @200
+-
 -
 -CPU
 @28

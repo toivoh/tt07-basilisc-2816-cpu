@@ -43,7 +43,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire use_cc,
 		input wire [`CC_BITS-1:0] cc,
 
-		input wire use_rotate, rotate_only, use_shr, use_sar,
+		input wire use_rotate, rotate_only, use_shr, use_sar, use_shl,
 		input wire [$clog2(REG_BITS*2)-1:0] rotate_count,
 
 		input wire do_swap,
@@ -186,8 +186,9 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	assign inst_done = (op_done && (use_rotate ? rotate_stage : data_stage)) || (skip && !wait_for_imm16);
 
-	// TODO: Might need to keep the ror1 stage even if rotate_count is even
-	assign skip_stage = inst_valid && (rotate_only && !any_rotate_stage) || (ror1_stage && (rotate_count[0] == 0) && !use_sar);
+	// rotate_count = 0 for a shift is always a no-op
+	assign no_op = (rotate_count[ROTATE_COUNT_BITS-1:1] == '0) && (rotate_stage || (any_rotate_stage && rotate_count[0] == 0));
+	assign skip_stage = inst_valid && (rotate_only && !any_rotate_stage) || (ror1_stage && (rotate_count[0] == 0) && !use_sar && !use_shl);
 
 	// Stage properties
 	// ----------------
@@ -276,7 +277,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire timed_rotate = rotate_stage;
 	wire do_shr = (rotate_stage || last_ror1) && use_shr; // Has effect only when rotate is true
 	wire do_sar = (rotate_stage || last_ror1) && use_sar; // Has effect only when rotate is true
-	assign no_op = rotate_stage && rotate_count[ROTATE_COUNT_BITS-1:1] == '0;
+	wire do_shl = ror1_stage && use_shl;
 
 	assign do_ror1 = ror1_stage && (rotate_count[0] == 1);
 
@@ -292,7 +293,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.reg1(reg1), .reg2(reg2), .update_reg1(update_reg1), .reverse_args(reverse_args), .double_arg2(double_arg2),
 		.output_scan_out(output_scan_out),
 		.update_carry_flags(update_carry_flags && !block_flag_updates), .update_other_flags(update_other_flags && !block_flag_updates),
-		.rotate(rotate), .timed_rotate(timed_rotate), .do_shr(do_shr), .do_sar(do_sar), .do_ror1(do_ror1), .last_ror1(last_ror1), .rotate_count(rotate_count[ROTATE_COUNT_BITS-1:1]),
+		.rotate(rotate), .timed_rotate(timed_rotate), .do_shr(do_shr), .do_sar(do_sar), .do_shl(do_shl), .do_ror1(do_ror1), .last_ror1(last_ror1), .rotate_count(rotate_count[ROTATE_COUNT_BITS-1:1]),
 		.do_swap_reg(do_swap_reg), .do_swap_mem(do_swap_mem),
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(src1_zero ? '0 : pc_data_in), .data_in2(data_in), .data_out(data_out),
