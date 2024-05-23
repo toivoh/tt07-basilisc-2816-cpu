@@ -479,9 +479,9 @@ class Binop(Instruction):
 		elif self.binop == BinopNum.ADC:  result = arg1 + arg2 + state.flag_c
 		elif self.binop == BinopNum.SBC:  result = arg1 - arg2 + state.flag_c + bitmask(self.wide)
 		elif self.binop == BinopNum.AND:  result = arg1 & arg2
+		elif self.binop == BinopNum.TEST: result = arg1 & arg2; update_dest = False
 		elif self.binop == BinopNum.OR:   result = arg1 | arg2
 		elif self.binop == BinopNum.XOR:  result = arg1 ^ arg2
-		#elif self.binop == BinopNum.CMP:  result = arg1 # No change
 		elif self.binop == BinopNum.TEST: result = arg1 # No change
 		elif self.binop == BinopNum.MOV:  result = arg2
 		else: raise ValueError("Unsupported binop value: ", self.binop)
@@ -501,8 +501,9 @@ class Binop(Instruction):
 		state.step_pc(1 + self.arg1.get_extra_words() + self.arg2.get_extra_words())
 
 	def encode(self):
-		assert 0 <= self.binop.value <= 7 or self.binop == BinopNum.MOV
-		assert not (self.binop.value == BinopNum.CMP and not isinstance(self.arg1, ArgReg))
+		#assert 0 <= self.binop.value <= 7 or self.binop == BinopNum.MOV
+		assert 0 <= self.binop.value <=  BinopNum.MOV.value
+		assert not (self.binop.value in (BinopNum.CMP, BinopNum.TEST) and not isinstance(self.arg1, ArgReg))
 
 		extra = []
 
@@ -520,6 +521,7 @@ class Binop(Instruction):
 		m = 1
 		z = 0
 		force_d = False
+		force_no_d = False
 
 		T = None
 
@@ -536,14 +538,27 @@ class Binop(Instruction):
 			assert (m, d) == (1, 0)
 			force_d = True
 			T = ArgZextReg
+		elif isinstance(arg2, ArgSextReg):
+			force_no_d = True
 
 		reg1 = arg1.get_reg()
 
-		binop_form = (self.binop.value < 8)
+		binop_form = (self.binop.value < 8) or (self.binop == BinopNum.TEST)
 
 		if binop_form:
+			binop = self.binop
+			if self.binop == BinopNum.CMP:
+				assert not d
+				assert not force_d
+				force_no_d = True
+			elif self.binop == BinopNum.TEST:
+				assert not d
+				assert not force_no_d
+				force_d = True
+				binop = BinopNum.CMP
+
 			prefix = 1 if self.wide else 2 | (reg1&1)
-			enc = (prefix << 14) | (self.binop.value << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T, extra_dest=extra)
+			enc = (prefix << 14) | (binop.value << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T, extra_dest=extra)
 			return [enc] + extra
 		else:
 			o = 1

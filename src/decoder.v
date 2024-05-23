@@ -324,19 +324,22 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire [LOG2_NR-1:0] arg2_reg = arg2_enc[2:0];
 	wire autoincdec_dir = arg2_enc[0] || push_pc_plus4; // 1 = negative
 
-	wire cmp = cmptest;
+	wire cmp = cmptest && !d;
+	wire test = cmptest && d;
 	wire update_dest = !cmptest;
 
 
 	wire [LOG2_NR-1:0] arg1_reg = r;
 
-	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : (use_rol || cmp ? `OP_SUB : ((cls == CLASS_ALU) ? binop : `OP_MOV));
+	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : (use_rol || cmp ? `OP_SUB : (test ? `OP_AND : ((cls == CLASS_ALU) ? binop : `OP_MOV)));
 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
 	wire update_other_flags = (cls == CLASS_ALU || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
 	wire update_carry_flags = ((cls == CLASS_ALU && (cmp || !binop[`OP_BIT_NADD])) || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
 
-	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( (((d && !use_imm8) && (arg2_src == `SRC_MEM)) || push_pc_plus4) ? `DEST_MEM : `DEST_REG ));
+	wire effective_d = d && !use_imm8 && !cmptest;
+
+	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus4) ? `DEST_MEM : `DEST_REG ));
 	wire [LOG2_NR-1:0] reg_dest = arg1_reg;
 	wire [`SRC_BITS-1:0] src = arg2_src;
 	wire [LOG2_NR-1:0] reg_src = arg2_reg;
