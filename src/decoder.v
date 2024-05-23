@@ -226,6 +226,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			branch = 1;
 			src1_from_pc = 1;
 			use_imm8 = 1;
+			need_pre_stage = (cccc == `CC_CALL);
 		end
 	end
 
@@ -269,16 +270,16 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		addr_src_sext2 = 0;
 		arg2_pure_reg = 0;
 
-		if (use_imm8) begin
+		if (use_imm8 && !push_pc_plus4) begin
 			arg2_src = `SRC_IMM8;
 			wide2 = 0;
 			src_sext2 = 1;
-		end else if (use_zp) begin
+		end else if (use_zp && !push_pc_plus4) begin
 			// zp
 			arg2_src = `SRC_MEM;
 			addr_op = `OP_MOV;
 			addr_src = `SRC_IMM7;
-		end else if (mdz == 3'b101) begin
+		end else if (mdz == 3'b101 && !push_pc_plus4) begin
 			// (r, imm6)
 			arg2_src = `SRC_IMM6;
 			wide2 = 0;

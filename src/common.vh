@@ -53,7 +53,7 @@
 `define CC_MASK_NSPECIAL         4'b1100
 
 `define CC_ALWAYS 4'b0000
-//`define CC_CALL   4'b0001
+`define CC_CALL   4'b0001
 //`define CC_DJNZ0  4'b0010
 //`define CC_DJNZ0  4'b0011
 

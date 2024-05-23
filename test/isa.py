@@ -117,6 +117,36 @@ class ShiftopNum(Enum):
 	SHL = 6
 	ROL = 7
 
+class CCNum(Enum):
+	ALWAYS = 0x0
+	CALL   = 0x1
+	DJNZ0  = 0x2
+	DJNZ1  = 0x3
+	Z      = 0x4
+	NZ     = 0x5
+	S      = 0x6
+	NS     = 0x7
+	C      = 0x8
+	NC     = 0x9
+	A      = 0xa
+	NA     = 0xb
+	V      = 0xc
+	NV     = 0xd
+	G      = 0xe
+	NG     = 0xf
+	AE     = C
+	NB     = C
+	NAE    = NC
+	B      = NC
+	NBE    = A
+	BE     = NA
+	GE     = V
+	NL     = V
+	NGE    = NV
+	L      = NV
+	NLE    = G
+	LE     = NG
+
 
 class Arg:
 	"""arg"""
@@ -789,7 +819,7 @@ class Jump(Instruction):
 		arg = arg & bitmask(True)
 
 
-		print("call(" if self.call else "jump(", hex(arg), "=)")
+		print("call(" if self.call else "jump(", hex(arg), ")")
 
 		state.set_pc(arg)
 
@@ -819,16 +849,28 @@ class Branch(Instruction):
 		super().__init__()
 		self.offset = offset
 		self.cc = cc
-		if cc == 0: # always
+		if cc in (CCNum.ALWAYS.value, CCNum.CALL.value):
 			assert taken != False
 			taken = True
 		self.taken = taken
 
 	def execute(self, state):
+		if self.cc == CCNum.CALL.value:
+			push_addr  = (state.get_reg(REG_INDEX_SP, pair=True) - 2) & 0xffff
+			push_value = (state.get_pc() + 4) & 0xffff
+			state.set_reg(REG_INDEX_SP, push_addr, pair=True)
+			state.ram_emu.read_mem(push_addr, True)
+			state.ram_emu.write_mem(push_addr, push_value, True)
+
 		#print("PC = ", state.pc)
 		assert isinstance(self.taken, bool)
+
+		prev_pc = state.get_pc()
+
 		if self.taken: state.step_pc(self.offset, jump=True)
 		else: state.step_pc()
+
+		print("branch(", CCNum(self.cc), ",", hex(self.offset), ",", self.taken, "):", hex(prev_pc),"  -> ", hex(state.get_pc()))
 		#print("PC = ", state.pc)
 
 	def encode(self):

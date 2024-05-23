@@ -262,6 +262,13 @@ async def test_cpu(dut):
 	# Intialize all registers to avoid problems with X
 	for i in range(0, 8, 2): exec(Binop(BinopNum.MOV, ArgReg(True, i), ArgImm8(True, 0)))
 
+	# Test every short call instruction
+	for offset in range(-128, 128):
+		if offset == 0: continue
+		exec(Branch(offset, cc=CCNum.CALL.value))
+		for i in range(0, 2):
+			exec(Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 4*i, 0), ArgReg(True, 4*i+2)))
+
 	# Try all even shl shift steps
 	for wide in [False, True]:
 		for use_immediate in [False, True]:
