@@ -494,13 +494,15 @@ class Binop(Instruction):
 			state.flag_c = ((result >> (8*(1+self.wide))) & 1) != 0
 			# TODO; model flag_v
 
-		print("binop(", self.wide, ", ", self.binop, ", ", hex(arg1), ", ", hex(arg2), ") =", hex(result))
+		#print("binop(", self.wide, ", ", self.binop, ", ", hex(arg1), ", ", hex(arg2), ") =", hex(result))
+		print("binop(", self.wide, ", ", self.binop, ", ", str(self.arg1), ":", hex(arg1), ", ", str(self.arg2), ":", hex(arg2), ") =", hex(result))
 
 		if update_dest: state.set_dest(dest, result)
 		state.step_pc(1 + self.arg1.get_extra_words() + self.arg2.get_extra_words())
 
 	def encode(self):
 		assert 0 <= self.binop.value <= 7 or self.binop == BinopNum.MOV
+		assert not (self.binop.value == BinopNum.CMP and not isinstance(self.arg1, ArgReg))
 
 		extra = []
 

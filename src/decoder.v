@@ -131,6 +131,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg branch;
 	reg src1_from_pc;
 	reg jump;
+	reg cmptest;
 	always @(*) begin
 		cls = 'X;
 		//cls = CLASS_MOV;
@@ -143,6 +144,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		src1_from_pc = 0;
 		jump = 0;
 		need_pre_stage = 0;
+		cmptest = 0;
 
 //				111111
 //				5432109876543210
@@ -156,6 +158,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			cls = (mdz == 3'b111) ? CLASS_SHIFT : CLASS_ALU;
 			r = {rr, e & !wide}; // Would have been easier if r[0] could be 1. Can r[0] be ignored when wide=1?
 			shift_op = aaa;
+			cmptest = (aaa == 3'b111);
 		end else if (aaa[2] == 1 || aaa[1] == 1) begin
 //				001gomrrdziiiiii	2^13 r8:  mov/shift/swap/inc/dec/zero
 //				0001omrrdziiiiii	2^12 r16: mov/shift/swap/inc/dec/zero
@@ -222,19 +225,21 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		end
 	end
 
+	/*
 	reg [2:0] binop;
 	reg update_dest;
 	always @(*) begin
 		binop = aaa;
 		update_dest = 1;
-		/*
-		if (cls == CLASS_ALU && binop == `OP_MOV) begin
-			// cmp
-			binop = `OP_SUB;
-			update_dest = 0;
-		end
-		*/
+		//if (cls == CLASS_ALU && binop == `OP_MOV) begin
+		//	// cmp
+		//	binop = `OP_SUB;
+		//	update_dest = 0;
+		//end
 	end
+*/
+	wire [2:0] binop = aaa;
+
 
 	wire [5:0] arg2_enc = imm6;
 
@@ -319,14 +324,17 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire [LOG2_NR-1:0] arg2_reg = arg2_enc[2:0];
 	wire autoincdec_dir = arg2_enc[0] || push_pc_plus4; // 1 = negative
 
+	wire cmp = cmptest;
+	wire update_dest = !cmptest;
+
 
 	wire [LOG2_NR-1:0] arg1_reg = r;
 
-	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : (use_rol ? `OP_SUB : ((cls == CLASS_ALU) ? binop : `OP_MOV));
+	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : (use_rol || cmp ? `OP_SUB : ((cls == CLASS_ALU) ? binop : `OP_MOV));
 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
 	wire update_other_flags = (cls == CLASS_ALU || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
-	wire update_carry_flags = ((cls == CLASS_ALU && !binop[`OP_BIT_NADD]) || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
+	wire update_carry_flags = ((cls == CLASS_ALU && (cmp || !binop[`OP_BIT_NADD])) || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
 
 	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( (((d && !use_imm8) && (arg2_src == `SRC_MEM)) || push_pc_plus4) ? `DEST_MEM : `DEST_REG ));
 	wire [LOG2_NR-1:0] reg_dest = arg1_reg;

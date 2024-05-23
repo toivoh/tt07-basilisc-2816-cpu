@@ -72,17 +72,17 @@ async def test_decoder(dut):
 					#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
 				inst = Shift(shiftop, rand_arg_reg(wide), arg2)
 			else:
-				# TODO: Test CMP, TEST
-				#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
-				#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.MOV])
-				opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+				# TODO: Test TEST
+				#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+				opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.MOV])
+				no_d = (opnum == BinopNum.CMP)
 				if opnum != BinopNum.MOV and randrange(4) == 0: # mov r, imm6 has no encoding; use mov r, imm8 instead
 					arg1, arg2 = rand_arg_reg(wide), rand_arg_imm6(wide)
 				elif opnum == BinopNum.MOV and randbool(): # mov r, imm8 -- choose imm8 more often since it covers more of the encoding space
 					arg1, arg2 = rand_arg_reg(wide), rand_arg_imm8(wide)
 				else:
-					if randbool(): arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True)
-					else:          arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
+					if randbool() or no_d: arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True)
+					else:                  arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
 
 				inst = Binop(opnum, arg1, arg2)
 

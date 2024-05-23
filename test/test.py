@@ -285,9 +285,9 @@ async def test_cpu(dut):
 				r = [0, randrange(1,32), randrange(-32, 0)]
 				si, sj = [r[i], r[j]]
 				exec(Binop(BinopNum.MOV, ArgReg(False, 0), ArgImm8(False, r[i])))
-				exec(Binop(BinopNum.SUB, ArgReg(False, 0), ArgImm6(False, r[j])))
+				exec(Binop(BinopNum.CMP, ArgReg(False, 0), ArgImm6(False, r[j])))
 
-				si, sj = sj, si # compensate for using revsub
+				#si, sj = sj, si # compensate for using revsub
 
 				ui = si & 255
 				uj = sj & 255
@@ -364,16 +364,17 @@ async def test_cpu(dut):
 			inst = Swap(rand_arg_reg(wide), arg2)
 		else:
 			wide = randbool()
-			# TODO: Test CMP, TEST
-			#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
-			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+			# TODO: Test TEST
+			#opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.MOV])
+			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.MOV])
+			no_d = (opnum == BinopNum.CMP)
 			if opnum != BinopNum.MOV and randrange(4) == 0: # mov r, imm6 has no encoding; use mov r, imm8 instead
 				arg1, arg2 = rand_arg_reg(wide), rand_arg_imm6(wide)
 			elif opnum == BinopNum.MOV and randbool(): # mov r, imm8 -- choose imm8 more often since it covers more of the encoding space
 				arg1, arg2 = rand_arg_reg(wide), rand_arg_imm8(wide)
 			else:
-				if randbool(): arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True)
-				else:          arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
+				if randbool() or no_d: arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True)
+				else:                  arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
 
 			inst = Binop(opnum, arg1, arg2)
 
