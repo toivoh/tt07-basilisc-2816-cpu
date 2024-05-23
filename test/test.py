@@ -334,7 +334,8 @@ async def test_cpu(dut):
 
 
 	for iter in range(n_tests):
-		rnd = randrange(11)
+		rnd = randrange(12)
+		wide = randbool() # used by most cases below
 		if rnd == 0:
 			if randbool():
 				# Avoid jumping with offset = 0
@@ -348,7 +349,6 @@ async def test_cpu(dut):
 				inst = Jump(arg, call=call)
 				print("Call" if call else "Jump")
 		elif rnd <= 2:
-			wide = randbool()
 			shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL, ShiftopNum.SHL])
 			if randbool():
 				arg2 = ArgImm6(False, randrange(8 if shiftop == ShiftopNum.SHL and not wide else 16))
@@ -358,12 +358,13 @@ async def test_cpu(dut):
 				#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
 			inst = Shift(shiftop, rand_arg_reg(wide), arg2)
 		elif rnd == 3:
-			wide = randbool()
 			if randrange(4) == 0: arg2 = rand_arg_reg(wide)
 			else: arg2 = rand_arg_mem(wide)
 			inst = Swap(rand_arg_reg(wide), arg2)
+		elif rnd == 4:
+			opnum = choice([BinopNum.REVSUB, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
+			inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
 		else:
-			wide = randbool()
 			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.TEST, BinopNum.MOV])
 			no_d = opnum in (BinopNum.CMP, BinopNum.TEST)
 			if opnum != BinopNum.MOV and randrange(4) == 0: # mov r, imm6 has no encoding; use mov r, imm8 instead

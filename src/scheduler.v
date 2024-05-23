@@ -29,6 +29,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire double_src2,
 		input wire update_dest,
 		input wire force_reverse_args,
+		input wire invert_src2,
 
 		input wire addr_wide2,
 		input wire [`ADDR_OP_BITS-1:0] addr_op,
@@ -290,7 +291,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.operation(operation),
 		.external_arg1(external_arg1), .external_arg2(external_arg2),
 		.pair_op(pair_op), .pair_op2(pair_op2), .sext2(sext2), .arg2_limit_length(arg2_limit_length),
-		.reg1(reg1), .reg2(reg2), .update_reg1(update_reg1), .reverse_args(reverse_args), .double_arg2(double_arg2),
+		.reg1(reg1), .reg2(reg2), .update_reg1(update_reg1), .reverse_args(reverse_args), .double_arg2(double_arg2), .invert_src2(data_stage && invert_src2),
 		.output_scan_out(output_scan_out),
 		.update_carry_flags(update_carry_flags && !block_flag_updates), .update_other_flags(update_other_flags && !block_flag_updates),
 		.rotate(rotate), .timed_rotate(timed_rotate), .do_shr(do_shr), .do_sar(do_sar), .do_shl(do_shl), .do_ror1(do_ror1), .last_ror1(last_ror1), .rotate_count(rotate_count[ROTATE_COUNT_BITS-1:1]),

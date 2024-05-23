@@ -132,6 +132,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg src1_from_pc;
 	reg jump;
 	reg cmptest;
+	reg alt_op_available;
 	always @(*) begin
 		cls = 'X;
 		//cls = CLASS_MOV;
@@ -145,6 +146,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		jump = 0;
 		need_pre_stage = 0;
 		cmptest = 0;
+		alt_op_available = 0;
 
 //				111111
 //				5432109876543210
@@ -159,6 +161,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			r = {rr, e & !wide}; // Would have been easier if r[0] could be 1. Can r[0] be ignored when wide=1?
 			shift_op = aaa;
 			cmptest = (aaa == 3'b111);
+			alt_op_available = !cmptest && !(mdz == 3'b111);
 		end else if (aaa[2] == 1 || aaa[1] == 1) begin
 //				001gomrrdziiiiii	2^13 r8:  mov/shift/swap/inc/dec/zero
 //				0001omrrdziiiiii	2^12 r16: mov/shift/swap/inc/dec/zero
@@ -213,6 +216,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 //	1x	mov		shift		mov		swap		<------- mov ------->
 				if (mdz == 3'b101) cls = CLASS_SHIFT;
 				if (mdz == 3'b111) cls = CLASS_SWAP;
+				alt_op_available = (cls == CLASS_MOV);
 				//if (wide && mdz == 3'b001) cls = CLASS_SHIFT; // collides with mov r16, zp?
 			end
 		end else begin
@@ -252,6 +256,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg [`ADDR_OP_BITS-1:0] addr_op;
 	reg autoincdec;
 	reg addr_src_sext2;
+	reg arg2_pure_reg;
 	always @(*) begin
 		arg2_src = 'X;
 		addr_reg1 = 'X;
@@ -262,6 +267,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		addr_op = `OP_ADD;
 		autoincdec = 0;
 		addr_src_sext2 = 0;
+		arg2_pure_reg = 0;
 
 		if (use_imm8) begin
 			arg2_src = `SRC_IMM8;
@@ -303,6 +309,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				arg2_src = `SRC_REG;
 				wide2 = !arg2_enc[3];
 				src_sext2 = !d; // d selects sext or zext
+				arg2_pure_reg = !wide || !arg2_enc[3];
 			end else begin
 				// 000xy1
 				if (arg2_enc[2:1] == 0) begin
@@ -320,6 +327,8 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		if (use_rotate) wide2 = wide;
 	end
 
+	wire [LOG2_NR-1:0] arg1_reg = r;
+
 	wire [LOG2_NR-1:0] addr_reg2 = arg2_enc[2:0];
 	wire [LOG2_NR-1:0] arg2_reg = arg2_enc[2:0];
 	wire autoincdec_dir = arg2_enc[0] || push_pc_plus4; // 1 = negative
@@ -328,8 +337,13 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire test = cmptest && d;
 	wire update_dest = !cmptest;
 
+	wire use_alt_op = alt_op_available && arg2_pure_reg && d;
+	wire sub_or_sbc = (cls == CLASS_ALU) && (binop == `OP_SUB || binop == `OP_SBC);
 
-	wire [LOG2_NR-1:0] arg1_reg = r;
+	wire invert_src2 = use_alt_op && !sub_or_sbc;
+	// Replace sub r, imm6 with revsub r, imm6, also use revsub as alternate op for sub
+	wire force_reverse_args = sub_or_sbc && ((mdz == 3'b101) || use_alt_op);
+
 
 	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : (use_rol || cmp ? `OP_SUB : (test ? `OP_AND : ((cls == CLASS_ALU) ? binop : `OP_MOV)));
 
@@ -375,9 +389,6 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire do_swap = (cls == CLASS_SWAP);
 
-	// replace sub r, imm6 with revsub r, imm6
-	wire force_reverse_args = (cls == CLASS_ALU) && (aaa == `OP_SUB || aaa == `OP_SBC) && (mdz == 3'b101);
-
 	scheduler #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
 		.clk(clk), .reset(reset),
 		.inst_valid(inst_valid), .inst_done(sc_inst_done),
@@ -386,7 +397,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.src(src), .reg_src(reg_src), .src_sext2(src_sext2), .double_src2(double_src2),
 		.addr_wide2(addr_wide2), .addr_op(addr_op), .addr_reg1(addr_reg1), .addr_src(addr_src), .reg_addr_src(addr_reg2),
 		.addr_src_sext2(addr_src_sext2), .update_dest(update_dest),
-		.force_reverse_args(force_reverse_args),
+		.force_reverse_args(force_reverse_args), .invert_src2(invert_src2),
 		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),

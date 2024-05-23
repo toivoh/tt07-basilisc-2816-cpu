@@ -101,6 +101,14 @@ class BinopNum(Enum):
 	TEST = 8
 	MOV  = 9
 
+	ADD_ALT = 16 + 0 # same as rd -= rs - 1 ? -- is there something better to do with it?
+	REVSUB  = 16 + 1
+	ADC_ALT = 16 + 2 # same as sbc ? -- is there something better to do with it?
+	REVSBC  = 16 + 3
+	AND_NOT = 16 + 4
+	OR_NOT  = 16 + 5
+	XOR_NOT = 16 + 6
+	MOV_NOT = 16 + 9
 
 class ShiftopNum(Enum):
 	ROR = 0
@@ -473,24 +481,30 @@ class Binop(Instruction):
 		if isinstance(self.arg2, ArgImm6) and self.binop in (BinopNum.SUB, BinopNum.SBC):
 			arg1, arg2 = arg2, arg1
 
-		if   self.binop == BinopNum.ADD:  result = arg1 + arg2
-		elif self.binop == BinopNum.SUB:  result = arg1 - arg2 + (bitmask(self.wide)+1)
-		elif self.binop == BinopNum.CMP:  result = arg1 - arg2 + (bitmask(self.wide)+1); update_dest = False # same as SUB but don't update dest
-		elif self.binop == BinopNum.ADC:  result = arg1 + arg2 + state.flag_c
-		elif self.binop == BinopNum.SBC:  result = arg1 - arg2 + state.flag_c + bitmask(self.wide)
-		elif self.binop == BinopNum.AND:  result = arg1 & arg2
-		elif self.binop == BinopNum.TEST: result = arg1 & arg2; update_dest = False
-		elif self.binop == BinopNum.OR:   result = arg1 | arg2
-		elif self.binop == BinopNum.XOR:  result = arg1 ^ arg2
-		elif self.binop == BinopNum.TEST: result = arg1 # No change
-		elif self.binop == BinopNum.MOV:  result = arg2
+		if   self.binop == BinopNum.ADD:     result = arg1 + arg2
+		elif self.binop == BinopNum.SUB:     result = arg1 - arg2 + (bitmask(self.wide)+1)
+		elif self.binop == BinopNum.REVSUB:  result = arg2 - arg1 + (bitmask(self.wide)+1)
+		elif self.binop == BinopNum.CMP:     result = arg1 - arg2 + (bitmask(self.wide)+1); update_dest = False # same as SUB but don't update dest
+		elif self.binop == BinopNum.ADC:     result = arg1 + arg2 + state.flag_c
+		elif self.binop == BinopNum.SBC:     result = arg1 - arg2 + state.flag_c + bitmask(self.wide)
+		elif self.binop == BinopNum.REVSBC:  result = arg2 - arg1 + state.flag_c + bitmask(self.wide)
+		elif self.binop == BinopNum.AND:     result = arg1 & arg2
+		elif self.binop == BinopNum.TEST:    result = arg1 & arg2; update_dest = False
+		elif self.binop == BinopNum.OR:      result = arg1 | arg2
+		elif self.binop == BinopNum.XOR:     result = arg1 ^ arg2
+		elif self.binop == BinopNum.TEST:    result = arg1 # No change
+		elif self.binop == BinopNum.MOV:     result = arg2
+		elif self.binop == BinopNum.AND_NOT: result = arg1 & (~arg2 & bitmask(self.wide))
+		elif self.binop == BinopNum.OR_NOT:  result = arg1 | (~arg2 & bitmask(self.wide))
+		elif self.binop == BinopNum.XOR_NOT: result = arg1 ^ (~arg2 & bitmask(self.wide))
+		elif self.binop == BinopNum.MOV_NOT: result = (~arg2 & bitmask(self.wide))
 		else: raise ValueError("Unsupported binop value: ", self.binop)
 
-		if self.binop != BinopNum.MOV:
+		if self.binop not in (BinopNum.MOV, BinopNum.MOV_NOT):
 			state.flag_z = (result & bitmask(self.wide)) == 0
 			state.flag_s = ((result >> (8*(1+self.wide)-1)) & 1) != 0
 
-		if self.binop in (BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.CMP):
+		if self.binop in (BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.CMP, BinopNum.REVSUB, BinopNum.REVSBC):
 			state.flag_c = ((result >> (8*(1+self.wide))) & 1) != 0
 			# TODO; model flag_v
 
@@ -502,7 +516,8 @@ class Binop(Instruction):
 
 	def encode(self):
 		#assert 0 <= self.binop.value <= 7 or self.binop == BinopNum.MOV
-		assert 0 <= self.binop.value <=  BinopNum.MOV.value
+		#assert 0 <= self.binop.value <=  BinopNum.MOV.value
+		assert 0 <= self.binop.value <=  BinopNum.MOV.value or (isinstance(self.arg1, ArgReg) and isinstance(self.arg2, ArgReg))
 		assert not (self.binop.value in (BinopNum.CMP, BinopNum.TEST) and not isinstance(self.arg1, ArgReg))
 
 		extra = []
@@ -543,19 +558,28 @@ class Binop(Instruction):
 
 		reg1 = arg1.get_reg()
 
-		binop_form = (self.binop.value < 8) or (self.binop == BinopNum.TEST)
+		binop = self.binop
+		if binop.value >= BinopNum.ADD_ALT.value:
+			assert isinstance(self.arg1, ArgReg) and isinstance(self.arg2, ArgReg)
+			binop = BinopNum(binop.value - BinopNum.ADD_ALT.value)
+			assert 0 <= binop.value <= BinopNum.MOV.value
+			assert binop not in (BinopNum.CMP, BinopNum.TEST)
+			force_d = True
+
+		binop_form = (binop.value < 8) or (binop == BinopNum.TEST)
 
 		if binop_form:
-			binop = self.binop
-			if self.binop == BinopNum.CMP:
+			if binop == BinopNum.CMP:
 				assert not d
 				assert not force_d
 				force_no_d = True
-			elif self.binop == BinopNum.TEST:
+			elif binop == BinopNum.TEST:
 				assert not d
 				assert not force_no_d
 				force_d = True
 				binop = BinopNum.CMP
+
+			assert not (force_d and force_no_d)
 
 			prefix = 1 if self.wide else 2 | (reg1&1)
 			enc = (prefix << 14) | (binop.value << 11) | (m << 10) | (((reg1&6)|(d or force_d)) << 7) | (z << 6) | arg2.encode(is_dest=d, T=T, extra_dest=extra)
@@ -566,18 +590,20 @@ class Binop(Instruction):
 			assert not isinstance(arg2, ArgImm6) # Use ArgImm8 for mov
 
 			if isinstance(arg2, ArgImm8):
-				assert self.binop == BinopNum.MOV
+				assert binop == BinopNum.MOV
 				assert (m, d) == (1, 0)
 				d, z = 0, 0 # Will be overridden by the immediate data, but d acts as if it is zero
 				o = 0
 				T = ArgImm8
 			elif isinstance(arg2, ArgPCPlusImm8):
-				assert self.binop == BinopNum.MOV
+				assert binop == BinopNum.MOV
 				assert (m, d) == (1, 0)
 				m = 0
 				d, z = 0, 0 # Will be overridden by the immediate data, but d acts as if it is zero
 				o = 0
 				T = ArgPCPlusImm8
+
+			assert not (force_d and force_no_d)
 
 			prefix = 1 if self.wide else 2 | (reg1&1)
 			#print((prefix, o, m, reg1, d, z, arg2.encode(is_dest=d), type(arg2)))

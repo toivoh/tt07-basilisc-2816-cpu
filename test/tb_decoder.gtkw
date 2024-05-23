@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Tue May 21 11:10:16 2024
+[*] Thu May 23 09:41:35 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.vcd"
-[dumpfile_mtime] "Tue May 21 11:05:51 2024"
-[dumpfile_size] 11183797
+[dumpfile_mtime] "Thu May 23 09:35:56 2024"
+[dumpfile_size] 10916258
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.gtkw"
-[timestart] 370000
+[timestart] 1388370000
 [size] 2988 1720
 [pos] -1 -1
-*-23.000000 24990000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 1468640000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb_decoder.
 [treeopen] tb_decoder.dec.
 [treeopen] tb_decoder.dec.sched.
@@ -32,7 +32,7 @@ tb_decoder.dec.load_imm16
 tb_decoder.dec.imm16_loaded
 @200
 -
-@23
+@22
 tb_decoder.inst[15:0]
 @200
 -
@@ -84,6 +84,12 @@ tb_decoder.dec.op[2:0]
 tb_decoder.dec.aaa[2:0]
 @200
 -
+@28
+tb_decoder.dec.alt_op_available
+tb_decoder.dec.arg2_pure_reg
+tb_decoder.dec.use_alt_op
+tb_decoder.dec.invert_src2
+@200
 -
 @28
 tb_decoder.dec.cls[2:0]
@@ -96,7 +102,9 @@ tb_decoder.dec.sched.need_addr
 @28
 tb_decoder.dec.sched.addr_stage
 tb_decoder.dec.sched.data_stage
+tb_decoder.dec.sched.ror1_stage
 tb_decoder.dec.sched.rotate_stage
+tb_decoder.dec.sched.do_ror1
 @200
 -
 @28
@@ -133,15 +141,31 @@ tb_decoder.dec.sched.rotate_stage
 tb_decoder.dec.sched.alu.operation[2:0]
 tb_decoder.dec.sched.alu.arg2_0[1:0]
 tb_decoder.dec.sched.alu.arg2[1:0]
+@29
 tb_decoder.dec.sched.alu.arg2_s[1:0]
+@28
 tb_decoder.dec.sched.alu.result[1:0]
 tb_decoder.dec.sched.alu.scan_in[1:0]
 tb_decoder.dec.sched.alu.arg2_6bit
 @200
 -
 @28
+tb_decoder.dec.sched.alu.invert_src2
+tb_decoder.dec.sched.alu.invert_arg2
+@200
+-
+@28
 tb_decoder.dec.sched.alu.flag_c
+tb_decoder.dec.sched.alu.flag_v
 tb_decoder.dec.sched.alu.flag_s
 tb_decoder.dec.sched.alu.flag_z
+@200
+-
+@28
+tb_decoder.dec.sched.alu.arg1[1:0]
+tb_decoder.dec.sched.alu.arg1_s[1:0]
+tb_decoder.dec.sched.alu.arg2[1:0]
+tb_decoder.dec.sched.alu.arg2_s[1:0]
+tb_decoder.dec.sched.alu.arg2_si[1:0]
 [pattern_trace] 1
 [pattern_trace] 0

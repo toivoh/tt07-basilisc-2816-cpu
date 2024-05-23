@@ -20,7 +20,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		input wire pair_op, pair_op2, sext2, // sign/zero extend if pair_op && !pair_op2
 		input wire [2:0] arg2_limit_length,
 		input wire [LOG2_NR-1:0] reg1, reg2,
-		input wire update_reg1, reverse_args, double_arg2,
+		input wire update_reg1, reverse_args, double_arg2, invert_src2, // invert_src2 doesn't combine with `OP_SUB because not needed
 		input wire output_scan_out,
 		input wire update_carry_flags, update_other_flags,
 
@@ -93,7 +93,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	wire [NSHIFT-1:0] scan_in, scan_in2, scan_out, scan_out2;
 
 	wire block_carry = !operation[`OP_BIT_WCARRY]; // Set to zero for adc
-	wire do_sub = operation[`OP_BIT_SUB];
+	wire do_sub = (operation == `OP_SUB) || (operation == `OP_SBC);
 
 	// Is the operation using just one register operand?
 	//wire single_reg = (operation == OP_MOV) || external_arg2;
@@ -123,16 +123,13 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	//wire carry_in = (state == 0 && block_carry) ? do_sub : carry;
 	wire carry_in = (state == 0) ? (block_carry ? do_sub : flag_c) : carry;
 
-	// If more ALU operations become asymmetric than `OP_SUB, handle these too! Or swap arg1 and arg2. Swapping them instead. Example: MOV is asymmetric
-	//wire invert_arg1 = do_sub && reverse_args;
-	//wire invert_arg2 = do_sub && !reverse_args;
-	wire invert_arg2 = do_sub;
+	wire invert_arg2 = do_sub | invert_src2;
 
 	wire [NSHIFT-1:0] arg1_s = reverse_args ? arg2 : arg1;
 	wire [NSHIFT-1:0] arg2_s = reverse_args ? arg1 : arg2;
+	wire [NSHIFT-1:0] arg2_si = (arg2_s ^ (invert_arg2 ? {NSHIFT{1'b1}} : '0));
 
-	//wire [NSHIFT+1-1:0] sum = (arg1 ^ (invert_arg1 ? {NSHIFT{1'b1}} : '0)) + (arg2 ^ (invert_arg2 ? {NSHIFT{1'b1}} : '0)) + carry_in; // TODO: better way to express the adder?
-	wire [NSHIFT+1-1:0] sum = arg1_s + (arg2_s ^ (invert_arg2 ? {NSHIFT{1'b1}} : '0)) + carry_in; // TODO: better way to express the adder?
+	wire [NSHIFT+1-1:0] sum = arg1_s + arg2_si + carry_in; // TODO: better way to express the adder?
 
 	// Calculate signed overflow. TODO: better way, share more logic with the normal sum
 	wire [NSHIFT-1:0] sb = {1'b1, {(NSHIFT-1){1'b0}}};
@@ -143,10 +140,10 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	always @(*) begin
 		case (operation)
 			OP_ADD, OP_SUB, OP_ADC, OP_SBC: result = sum;
-			OP_AND: result = arg1 & arg2;
-			OP_OR:  result = arg1 | arg2;
-			OP_XOR: result = arg1 ^ arg2;
-			OP_MOV: result = arg2_s;
+			OP_AND: result = arg1_s & arg2_si;
+			OP_OR:  result = arg1_s | arg2_si;
+			OP_XOR: result = arg1_s ^ arg2_si;
+			OP_MOV: result = arg2_si;
 		endcase
 	end
 
