@@ -133,7 +133,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg jump;
 	reg cmptest;
 	reg alt_op_available;
-	reg [NSHIFT-1:0] plus_pc_words;
+	//reg [NSHIFT-1:0] plus_pc_words;
 	always @(*) begin
 		cls = 'X;
 		//cls = CLASS_MOV;
@@ -148,7 +148,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		need_pre_stage = 0;
 		cmptest = 0;
 		alt_op_available = 0;
-		plus_pc_words = 'X;
+		//plus_pc_words = 'X;
 
 //				111111
 //				5432109876543210
@@ -196,7 +196,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 							wide = 1;
 							use_zp = 0;
 							need_pre_stage = z;
-							plus_pc_words = 2'd2;
+							//plus_pc_words = 2'd2;
 
 							// needed for call
 							src1_from_pc = pre_stage;
@@ -230,7 +230,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			src1_from_pc = 1;
 			use_imm8 = 1;
 			need_pre_stage = (cccc == `CC_CALL);
-			plus_pc_words = 2'd1;
+			//plus_pc_words = 2'd1;
 		end
 	end
 
@@ -331,6 +331,9 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		end
 		if (use_rotate) wide2 = wide;
 	end
+	wire long_inst = !branch && (arg2_enc[5:2] == '0 && arg2_enc[0] == 1); // Matches arg2 = imm16 or [imm16]
+	// Need to take the imm16 into account here since when we push pc + 2*plus_pc_words, it has not been consumed yet.
+	wire [NSHIFT-1:0] plus_pc_words = long_inst ? 2'd2 : 2'd1;
 
 	wire [LOG2_NR-1:0] arg1_reg = r;
 

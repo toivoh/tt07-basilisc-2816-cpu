@@ -803,7 +803,8 @@ class Jump(Instruction):
 	def execute(self, state):
 		if self.call:
 			push_addr  = (state.get_reg(REG_INDEX_SP, pair=True) - 2) & 0xffff
-			push_value = (state.get_pc() + 4) & 0xffff
+			step_size = 1 + self.arg.get_extra_words()
+			push_value = (state.get_pc() + 2*step_size) & 0xffff
 			state.set_reg(REG_INDEX_SP, push_addr, pair=True)
 			state.ram_emu.read_mem(push_addr, True)
 			state.ram_emu.write_mem(push_addr, push_value, True)
