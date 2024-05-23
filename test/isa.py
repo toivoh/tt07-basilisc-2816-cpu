@@ -857,7 +857,7 @@ class Branch(Instruction):
 	def execute(self, state):
 		if self.cc == CCNum.CALL.value:
 			push_addr  = (state.get_reg(REG_INDEX_SP, pair=True) - 2) & 0xffff
-			push_value = (state.get_pc() + 4) & 0xffff
+			push_value = (state.get_pc() + 2) & 0xffff
 			state.set_reg(REG_INDEX_SP, push_addr, pair=True)
 			state.ram_emu.read_mem(push_addr, True)
 			state.ram_emu.write_mem(push_addr, push_value, True)

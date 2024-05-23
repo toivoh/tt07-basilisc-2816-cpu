@@ -109,7 +109,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire use_imm6 = (mdz == 3'b101);
 	wire [1:0] idz_op = rr;
 
-	wire push_pc_plus4 = pre_stage; // only thing that pre_stage is used for so far.
+	wire push_pc_plus_n = pre_stage; // only thing that pre_stage is used for so far.
 
 /*
 	111111
@@ -133,6 +133,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg jump;
 	reg cmptest;
 	reg alt_op_available;
+	reg [NSHIFT-1:0] plus_pc_words;
 	always @(*) begin
 		cls = 'X;
 		//cls = CLASS_MOV;
@@ -147,6 +148,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		need_pre_stage = 0;
 		cmptest = 0;
 		alt_op_available = 0;
+		plus_pc_words = 'X;
 
 //				111111
 //				5432109876543210
@@ -194,6 +196,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 							wide = 1;
 							use_zp = 0;
 							need_pre_stage = z;
+							plus_pc_words = 2'd2;
 
 							// needed for call
 							src1_from_pc = pre_stage;
@@ -227,6 +230,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			src1_from_pc = 1;
 			use_imm8 = 1;
 			need_pre_stage = (cccc == `CC_CALL);
+			plus_pc_words = 2'd1;
 		end
 	end
 
@@ -270,31 +274,31 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		addr_src_sext2 = 0;
 		arg2_pure_reg = 0;
 
-		if (use_imm8 && !push_pc_plus4) begin
+		if (use_imm8 && !push_pc_plus_n) begin
 			arg2_src = `SRC_IMM8;
 			wide2 = 0;
 			src_sext2 = 1;
-		end else if (use_zp && !push_pc_plus4) begin
+		end else if (use_zp && !push_pc_plus_n) begin
 			// zp
 			arg2_src = `SRC_MEM;
 			addr_op = `OP_MOV;
 			addr_src = `SRC_IMM7;
-		end else if (mdz == 3'b101 && !push_pc_plus4) begin
+		end else if (mdz == 3'b101 && !push_pc_plus_n) begin
 			// (r, imm6)
 			arg2_src = `SRC_IMM6;
 			wide2 = 0;
 			src_sext2 = 1;
 		end else begin
 			// Regular dest/src
-			if (arg2_enc[5] == 1 || push_pc_plus4) begin
+			if (arg2_enc[5] == 1 || push_pc_plus_n) begin
 				// 1RRrrr	[r16 + r8]
 					// TODO: special cases when r16 + r8 overlap, maybe imm16 + r8 case too
 				arg2_src = `SRC_MEM;
-				addr_reg1 = push_pc_plus4 ? `REG_INDEX_SP : {arg2_enc[4:3], 1'b0};
+				addr_reg1 = push_pc_plus_n ? `REG_INDEX_SP : {arg2_enc[4:3], 1'b0};
 				//addr_src = `SRC_REG;
 
-				if (push_pc_plus4) arg2_src = `SRC_IMM2; // override
-				autoincdec = (addr_reg1[2:1] == addr_reg2[2:1]) || push_pc_plus4;
+				if (push_pc_plus_n) arg2_src = `SRC_IMM2; // override
+				autoincdec = (addr_reg1[2:1] == addr_reg2[2:1]) || push_pc_plus_n;
 
 				addr_src = autoincdec ? `SRC_IMM2 : `SRC_REG;
 				addr_src_sext2 = autoincdec;
@@ -332,7 +336,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire [LOG2_NR-1:0] addr_reg2 = arg2_enc[2:0];
 	wire [LOG2_NR-1:0] arg2_reg = arg2_enc[2:0];
-	wire autoincdec_dir = arg2_enc[0] || push_pc_plus4; // 1 = negative
+	wire autoincdec_dir = arg2_enc[0] || push_pc_plus_n; // 1 = negative
 
 	wire cmp = cmptest && !d;
 	wire test = cmptest && d;
@@ -354,23 +358,23 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire effective_d = d && !use_imm8 && !cmptest;
 
-	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus4) ? `DEST_MEM : `DEST_REG ));
+	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus_n) ? `DEST_MEM : `DEST_REG ));
 	wire [LOG2_NR-1:0] reg_dest = arg1_reg;
 	wire [`SRC_BITS-1:0] src = arg2_src;
 	wire [LOG2_NR-1:0] reg_src = arg2_reg;
 	wire addr_wide2 = (addr_src == `SRC_IMM16);
 
-	wire double_src2 = push_pc_plus4; // There are other cases when the scheduler sets double_arg2 based on its inputs.
+	wire double_src2 = push_pc_plus_n; // There are other cases when the scheduler sets double_arg2 based on its inputs.
 
 	wire sc_next_imm_data;
 	assign next_imm_data = sc_next_imm_data && normal_stage; // Don't consume imm data during pre-stage
 
-	wire [NSHIFT-1:0] imm_data_in2 = (autoincdec && addr_stage) ? {autoincdec_dir, 1'b1} : (push_pc_plus4 ? 2'd2 : imm_data_in);
+	wire [NSHIFT-1:0] imm_data_in2 = (autoincdec && addr_stage) ? {autoincdec_dir, 1'b1} : (push_pc_plus_n ? plus_pc_words : imm_data_in);
 	wire addr_just_reg1 = autoincdec && (autoincdec_dir == 0);
 
 	wire use_cc = branch;
 
-	wire block_tx_reply = push_pc_plus4;
+	wire block_tx_reply = push_pc_plus_n;
 
 	wire use_rotate = (cls == CLASS_SHIFT);
 	wire rotate_only = use_rotate & (d == 0); // Differentias between the two shift forms
