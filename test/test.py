@@ -42,14 +42,15 @@ async def test_cpu0(dut):
 
 	if preserved:
 		mem = [0 for i in range(32768)]
-		pc = 1
+		pc = 0xfffc >> 1
 
 		def encode(inst):
 			nonlocal pc
 			encoded = inst.encode()
 			print(encoded)
 			for w in encoded:
-				mem[pc] = w; pc += 1
+				mem[pc] = w
+				pc = (pc + 1) & 0x7fff
 
 		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
@@ -113,10 +114,10 @@ async def test_cpu0(dut):
 		# PC read
 		#encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgPCPlusImm8(True, -128)))
 		# Branch
-		encode(Branch(4+1, cc=dut.CC_Z.value))
+		encode(Branch(4+1, cc=dut.CC_NZ.value))
 		for i in range(4): mem[pc] = 256+i; pc += 1
 		# Untaken branch
-		encode(Branch(4+1, cc=dut.CC_NZ.value))
+		encode(Branch(4+1, cc=dut.CC_Z.value))
 
 		if True:
 			# Indirect jump: jump pc, sext(r8)

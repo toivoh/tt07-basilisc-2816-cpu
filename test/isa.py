@@ -36,7 +36,7 @@ class State:
 	def __init__(self):
 		self.regs = [0 for i in range(NREGS)]
 		self.carry = 0
-		self.pc = 2 # Currently, the first instruction is fetched from address 2.
+		self.pc = 0xfffc # Currently, the first instruction is fetched from address 0xfffc.
 		self.ram_emu = MockRAMEmulator(delay=1)
 
 		self.flag_c = 0

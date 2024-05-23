@@ -184,8 +184,8 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 	always @(posedge clk) begin
 		if (reset) begin
 			// We will start to fetch from pc+2.
-			// TODO: Decide starting address.
-			pc <= 0;
+			pc <= 16'hfffa; // Start fetching from 'hfffc, just enough for a jump to anywhere before wrapping around to zero.
+			//pc <= '0;
 		end else begin
 			//if (pc_next) pc <= {write_pc ? pc_data_in : (update_pc ? sum[IO_BITS-1:0] : pc[IO_BITS-1:0]), pc[PC_BITS-1:IO_BITS]};
 			if (pc_next) pc <= {update_pc ? tx_data : pc[IO_BITS-1:0], pc[PC_BITS-1:IO_BITS]};
