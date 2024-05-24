@@ -231,6 +231,26 @@ class ArgMemR16IncDec(ArgMem):
 	def __str__(self):
 		return f"ArgMemR16IncDec({self.reg16}, {self.dec})"
 
+class ArgMemPushPopTop(ArgMem):
+	"""[push/pop/top]"""
+	def __init__(self, wide, dir): # push: dir=1, pop: dir=-1, top: dir = 0
+		assert -1 <= dir <= 1
+
+		super().__init__(wide)
+		self.dir = dir
+
+	def get_addr(self, state):
+		return (state.get_sp(True) + ((-1 if self.dir == 1 else 0) << self.wide)) & 0xffff
+
+	def apply_side_effect(self, state):
+		state.set_sp(state.get_sp(False) - (self.dir << self.wide))
+
+	def encode(self, is_dest=False, T=None, extra_dest=None):
+		return 5
+
+	def __str__(self):
+		return f"ArgMemPushPopTop({self.dir})"
+
 class ArgMemDest(ArgMem):
 	"""ArgMemDest"""
 	def __init__(self, wide, addr):
@@ -495,6 +515,9 @@ class Instruction:
 	def __init__(self):
 		pass
 
+	def adjust(self):
+		pass
+
 class Binop(Instruction):
 	def __init__(self, binop, arg1, arg2):
 		assert isinstance(binop, BinopNum)
@@ -513,7 +536,14 @@ class Binop(Instruction):
 	def get_dest(self, state):
 		return self.arg1.get_dest(state)
 
+	def adjust(self):
+		if self.binop == BinopNum.MOV:
+			if isinstance(self.arg1, ArgMemPushPopTop): self.arg1.dir =  1 # push
+			if isinstance(self.arg2, ArgMemPushPopTop): self.arg2.dir = -1 # pop
+
 	def execute(self, state):
+		self.adjust()
+
 		#arg1 = self.arg1.get_value(state)
 		#arg2 = self.arg2.get_value(state)
 
@@ -827,12 +857,19 @@ class Jump(Instruction):
 		self.arg = arg
 		self.call = call
 
+	def adjust(self):
+		if isinstance(self.arg, ArgMemPushPopTop): self.arg.dir = -1 # pop
+
 	def execute(self, state):
+		self.adjust()
+
 		if self.call:
-			push_addr  = (state.get_reg(REG_INDEX_SP_GR, pair=True) - 2) & 0xffff
+			#push_addr  = (state.get_reg(REG_INDEX_SP_GR, pair=True) - 2) & 0xffff
+			push_addr  = (state.get_sp(True) - 2) & 0xffff
 			step_size = 1 + self.arg.get_extra_words()
 			push_value = (state.get_pc() + 2*step_size) & 0xffff
-			state.set_reg(REG_INDEX_SP_GR, push_addr, pair=True)
+			#state.set_reg(REG_INDEX_SP_GR, push_addr, pair=True)
+			state.set_sp(push_addr)
 			state.ram_emu.read_mem(push_addr, True)
 			state.ram_emu.write_mem(push_addr, push_value, True)
 
@@ -884,9 +921,12 @@ class Branch(Instruction):
 
 	def execute(self, state):
 		if self.cc == CCNum.CALL.value:
-			push_addr  = (state.get_reg(REG_INDEX_SP_GR, pair=True) - 2) & 0xffff
-			push_value = (state.get_pc() + 2) & 0xffff
-			state.set_reg(REG_INDEX_SP_GR, push_addr, pair=True)
+			#push_addr  = (state.get_reg(REG_INDEX_SP_GR, pair=True) - 2) & 0xffff
+			push_addr  = (state.get_sp(True) - 2) & 0xffff
+			step_size = 1 # + self.arg.get_extra_words()
+			push_value = (state.get_pc() + 2*step_size) & 0xffff
+			#state.set_reg(REG_INDEX_SP_GR, push_addr, pair=True)
+			state.set_sp(push_addr)
 			state.ram_emu.read_mem(push_addr, True)
 			state.ram_emu.write_mem(push_addr, push_value, True)
 
@@ -957,7 +997,7 @@ def rand_arg(wide, is_src=False, d_symmetry=True, zp_ok=True):
 		elif n == 1: return rand_arg_imm16(wide)
 		else: assert False
 
-	n = (not zp_ok) + randrange(6+zp_ok+is_src+(1+d_symmetry)*(is_src and wide))
+	n = (not zp_ok) + randrange(7+zp_ok+is_src+(1+d_symmetry)*(is_src and wide))
 	if   n == 0: return rand_arg_mem_zp(wide)
 	elif n == 1: return rand_arg_mem_r16r8(wide)
 	elif n == 2: return rand_arg_mem_r16incdec(wide)
@@ -965,12 +1005,13 @@ def rand_arg(wide, is_src=False, d_symmetry=True, zp_ok=True):
 	elif n == 4: return rand_arg_reg(wide)
 	elif n == 5: return ArgRegSP(wide)
 	elif n == 6: return rand_arg_mem_imm16(wide)
+	elif n == 7: return ArgMemPushPopTop(wide, 0)
 	# is_src:
-	elif n == 7: return rand_arg_imm16(wide)
+	elif n == 8: return rand_arg_imm16(wide)
 	# is_src and wide:
-	elif n == 8: return rand_arg_sext_reg(wide)
+	elif n == 9: return rand_arg_sext_reg(wide)
 	# is_src and wide and d_symmetry:
-	elif n == 9: return rand_arg_zext_reg(wide)
+	elif n == 10: return rand_arg_zext_reg(wide)
 	else: assert False
 
 def rand_arg_mem(wide, is_src=False, d_symmetry=True, zp_ok=True):
@@ -980,4 +1021,5 @@ def rand_arg_mem(wide, is_src=False, d_symmetry=True, zp_ok=True):
 	elif n == 2: return rand_arg_mem_r16incdec(wide)
 	elif n == 3: return rand_arg_mem_r16imm2(wide)
 	elif n == 4: return rand_arg_mem_imm16(wide)
+	elif n == 5: return ArgMemPushPopTop(wide, 0)
 	else: assert False

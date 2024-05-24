@@ -8,7 +8,7 @@
 `include "common.vh"
 
 // Currently, must have PREFETCH_QUEUE >= 2
-module CPU #( parameter LOG2_NR=4, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_QUEUE=3 ) (
+module CPU #( parameter LOG2_NR=4, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_QUEUE=2 ) (
 		input wire clk, reset,
 
 		output wire tx_fetch, // High when the message on tx_pins is for fetching instructions

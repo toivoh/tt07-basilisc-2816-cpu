@@ -59,6 +59,13 @@ async def test_cpu0(dut):
 			encode(Binop(BinopNum.MOV, ArgReg(False, 3), ArgRegSP(False)))
 			encode(Binop(BinopNum.MOV, ArgReg(True, 4), ArgRegSP(True)))
 
+		if True:
+			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
+
+			encode(Binop(BinopNum.MOV, ArgRegSP(False), ArgReg(False, 0)))
+			encode(Binop(BinopNum.MOV, ArgMemPushPopTop(False, 1), ArgReg(False, 1)))
+			encode(Binop(BinopNum.MOV, ArgReg(False, 3), ArgMemPushPopTop(False, -1)))
+
 		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 

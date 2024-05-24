@@ -95,7 +95,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	localparam CLASS_BITS = 3;
 	localparam CLASS_ALU = 0;
-	localparam CLASS_MOV = 1;
+	localparam CLASS_MOV = 1; // Also used for jumps
 	localparam CLASS_SWAP = 2;
 	localparam CLASS_SHIFT = 3;
 	localparam CLASS_INCDECZERO = 4;
@@ -259,7 +259,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg wide2;
 	reg src_sext2;
 	reg [`ADDR_OP_BITS-1:0] addr_op;
-	reg autoincdec;
+	reg autoincdec, autoincdec_dir, autoincdec_update;
 	reg addr_src_sext2;
 	reg arg2_pure_reg;
 	reg [LOG2_NR-1:0] arg2_reg;
@@ -272,6 +272,8 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		src_sext2 = 0;
 		addr_op = `OP_ADD;
 		autoincdec = 0;
+		autoincdec_dir = 'X;
+		autoincdec_update = 0;
 		addr_src_sext2 = 0;
 		arg2_pure_reg = 0;
 		arg2_reg = arg2_enc[2:0];
@@ -296,11 +298,13 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				// 1RRrrr	[r16 + r8]
 					// TODO: special cases when r16 + r8 overlap, maybe imm16 + r8 case too
 				arg2_src = `SRC_MEM;
-				addr_reg1 = push_pc_plus_n ? `REG_INDEX_SP_GR : {arg2_enc[4:3], 1'b0};
+				addr_reg1 = push_pc_plus_n ? `REG_INDEX_SP : {arg2_enc[4:3], 1'b0};
 				//addr_src = `SRC_REG;
 
 				if (push_pc_plus_n) arg2_src = `SRC_IMM2; // override
 				autoincdec = (addr_reg1[2:1] == addr_reg2[2:1]) || push_pc_plus_n;
+				autoincdec_update = autoincdec;
+				autoincdec_dir = arg2_enc[0] || push_pc_plus_n; // 1 = negative
 
 				addr_src = autoincdec ? `SRC_IMM2 : `SRC_REG;
 				addr_src_sext2 = autoincdec;
@@ -327,6 +331,15 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 					arg2_src = `SRC_MEM;
 					addr_src = `SRC_IMM16;
 					addr_op = `OP_MOV;
+				end else if (arg2_enc[2:1] == 2) begin
+					// [push/pop/sp]
+					arg2_src = `SRC_MEM;
+					addr_src = `SRC_IMM2;
+					addr_reg1 = `REG_INDEX_SP;
+					addr_src_sext2 = 1;
+					autoincdec = 1;
+					autoincdec_update = (cls == CLASS_MOV); // Turn off actual update for RMW operations, and set autoincdec_dir=0
+					autoincdec_dir = effective_d && autoincdec_update; // TODO correct?
 				end else if (arg2_enc[2:1] == 3) begin
 					// sp
 					arg2_src = `SRC_REG;
@@ -345,7 +358,6 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire [LOG2_NR-1:0] arg1_reg = r;
 
 	wire [LOG2_NR-1:0] addr_reg2 = arg2_enc[2:0];
-	wire autoincdec_dir = arg2_enc[0] || push_pc_plus_n; // 1 = negative
 
 	wire cmp = cmptest && !d;
 	wire test = cmptest && d;
@@ -414,7 +426,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.addr_wide2(addr_wide2), .addr_op(addr_op), .addr_reg1(addr_reg1), .addr_src(addr_src), .reg_addr_src(addr_reg2),
 		.addr_src_sext2(addr_src_sext2), .update_dest(update_dest),
 		.force_reverse_args(force_reverse_args), .invert_src2(invert_src2),
-		.autoincdec(autoincdec), .addr_just_reg1(addr_just_reg1),
+		.autoincdec(autoincdec_update), .addr_just_reg1(addr_just_reg1),
 		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
 		.use_cc(use_cc), .cc(cc),
 		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .use_sar(use_sar), .use_shl(use_shl), .rotate_count(rotate_count),
