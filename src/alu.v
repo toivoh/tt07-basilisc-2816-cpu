@@ -159,7 +159,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	wire [NSHIFT-1:0] scan_in_ror1 = {(!(shift_in_zeros && do_shl) || last_ror1) && scan_in_ror1_msb, !(shift_in_zeros && do_shl) && carry};
 
 	wire [NSHIFT-1:0] scan_in_rotate = do_ror1 ? scan_in_ror1 : scan_in_rotate_regular;
-	assign scan_in = rotate ? scan_in_rotate : scan_in_regular;
+	assign scan_in = (rotate && !do_swap_mem) ? scan_in_rotate : scan_in_regular;
 
 	assign scan_in2 = rotate || do_swap_reg ? scan_out : scan_out2;
 
@@ -207,5 +207,5 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 	// data_out also makes it possible to observe the register file, make sure that it stays that way
 	// so that it doesn't get optimized away.
-	assign data_out = output_scan_out ? scan_out : result;
+	assign data_out = output_scan_out ? scan_out : (do_swap_mem ? scan_out2 : result);
 endmodule : ALU

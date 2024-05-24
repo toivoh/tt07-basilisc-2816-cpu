@@ -274,16 +274,16 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire output_scan_out = addr_stage && addr_just_reg1;
 	wire external_arg1 = data_stage && (src1_from_pc || src1_zero);
 
-	wire rotate = any_rotate_stage;
+	wire do_swap_reg =              !need_addr && do_swap;
+	wire do_swap_mem = data_stage && need_addr && do_swap;
+
+	wire rotate = any_rotate_stage || do_swap_mem;
 	wire timed_rotate = rotate_stage;
 	wire do_shr = (rotate_stage || last_ror1) && use_shr; // Has effect only when rotate is true
 	wire do_sar = (rotate_stage || last_ror1) && use_sar; // Has effect only when rotate is true
 	wire do_shl = ror1_stage && use_shl;
 
 	assign do_ror1 = ror1_stage && (rotate_count[0] == 1);
-
-	wire do_swap_reg =              !need_addr && do_swap;
-	wire do_swap_mem = data_stage && need_addr && do_swap;
 
 	ALU #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) alu (
 		.clk(clk), .reset(reset),

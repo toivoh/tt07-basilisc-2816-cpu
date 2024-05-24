@@ -59,10 +59,10 @@ async def test_cpu0(dut):
 			#mem[0x3456 >> 1] = 0xabcd
 			#encode(Swap(ArgReg(True, 0), ArgMemR16PlusImm2(True, 2, 2)))
 
-			#encode(Swap(ArgReg(True, 0), ArgMemZP(True, 254)))
-			#mem[254>>1] = 0xabcd
+			encode(Swap(ArgReg(True, 0), ArgMemZP(True, 250)))
+			mem[250>>1] = 0xabcd
 
-			encode(Swap(ArgReg(False, 0), ArgReg(False, 1)))
+			#encode(Swap(ArgReg(False, 0), ArgReg(False, 1)))
 
 		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x8a5f)))
