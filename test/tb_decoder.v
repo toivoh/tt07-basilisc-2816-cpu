@@ -2,7 +2,7 @@
 
 `include "common.vh"
 
-module tb_decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2 ) ();
+module tb_decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2 ) ();
 	localparam IO_BITS = NSHIFT;
 	localparam IMM_BITS = 16;
 
@@ -90,14 +90,15 @@ module tb_decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2 ) ();
 		if (inst_done) inst_valid <= 0;
 	end
 
-	wire [REG_BITS-1:0] r0 = dec.sched.alu.registers.regs[0];
-	wire [REG_BITS-1:0] r1 = dec.sched.alu.registers.regs[1];
-	wire [REG_BITS-1:0] r2 = dec.sched.alu.registers.regs[2];
-	wire [REG_BITS-1:0] r3 = dec.sched.alu.registers.regs[3];
-	wire [REG_BITS-1:0] r4 = dec.sched.alu.registers.regs[4];
-	wire [REG_BITS-1:0] r5 = dec.sched.alu.registers.regs[5];
-	wire [REG_BITS-1:0] r6 = dec.sched.alu.registers.regs[6];
-	wire [REG_BITS-1:0] r7 = dec.sched.alu.registers.regs[7];
+	wire [REG_BITS-1:0] r0 = dec.sched.alu.registers.general_registers.regs[0];
+	wire [REG_BITS-1:0] r1 = dec.sched.alu.registers.general_registers.regs[1];
+	wire [REG_BITS-1:0] r2 = dec.sched.alu.registers.general_registers.regs[2];
+	wire [REG_BITS-1:0] r3 = dec.sched.alu.registers.general_registers.regs[3];
+	wire [REG_BITS-1:0] r4 = dec.sched.alu.registers.general_registers.regs[4];
+	wire [REG_BITS-1:0] r5 = dec.sched.alu.registers.general_registers.regs[5];
+	wire [REG_BITS-1:0] r6 = dec.sched.alu.registers.general_registers.regs[6];
+	wire [REG_BITS-1:0] r7 = dec.sched.alu.registers.general_registers.regs[7];
+	wire [REG_BITS-1:0] sp = dec.sched.alu.registers.sp_register.regs;
 
 	localparam OP_BITS = `OP_BITS;
 	localparam OP_BIT_NADD = `OP_BIT_NADD;

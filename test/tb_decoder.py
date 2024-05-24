@@ -27,7 +27,8 @@ async def test_decoder(dut):
 		sched = decoder.sched
 		alu = sched.alu
 		regfile = alu.registers
-		regs = regfile.regs
+		regs = regfile.general_registers.regs
+		sp_reg = regfile.sp_register.regs
 
 		for i in range(NREGS): regs[i].value = i**2
 
@@ -51,6 +52,7 @@ async def test_decoder(dut):
 
 			# Fresh random state. TODO: Don't reinitialize everything?
 			for i in range(0, NREGS, 2): state.set_reg(i, randrange(0x10000), True)
+			state.set_sp(randrange(0x100))
 			state.apply(alu)
 
 			#inst = Binop(BinopNum.SUB, ArgReg(False, 5), ArgReg(False, 4))
@@ -132,6 +134,7 @@ async def test_decoder(dut):
 
 			#break
 			for i in range(NREGS): assert int(regs[i].value) == state.regs[i]
+			assert sp_reg.value.integer == state.get_sp(False)
 
 			assert alu.flag_c.value.integer == int(state.flag_c)
 			# TODO: test flag_v

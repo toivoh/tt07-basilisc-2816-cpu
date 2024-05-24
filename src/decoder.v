@@ -7,7 +7,7 @@
 
 `include "common.vh"
 
-module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) (
+module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) (
 		input wire clk, reset,
 
 		input wire inst_valid,
@@ -262,6 +262,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg autoincdec;
 	reg addr_src_sext2;
 	reg arg2_pure_reg;
+	reg [LOG2_NR-1:0] arg2_reg;
 	always @(*) begin
 		arg2_src = 'X;
 		addr_reg1 = 'X;
@@ -273,6 +274,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		autoincdec = 0;
 		addr_src_sext2 = 0;
 		arg2_pure_reg = 0;
+		arg2_reg = arg2_enc[2:0];
 
 		if (use_imm8 && !push_pc_plus_n) begin
 			arg2_src = `SRC_IMM8;
@@ -294,7 +296,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				// 1RRrrr	[r16 + r8]
 					// TODO: special cases when r16 + r8 overlap, maybe imm16 + r8 case too
 				arg2_src = `SRC_MEM;
-				addr_reg1 = push_pc_plus_n ? `REG_INDEX_SP : {arg2_enc[4:3], 1'b0};
+				addr_reg1 = push_pc_plus_n ? `REG_INDEX_SP_GR : {arg2_enc[4:3], 1'b0};
 				//addr_src = `SRC_REG;
 
 				if (push_pc_plus_n) arg2_src = `SRC_IMM2; // override
@@ -320,12 +322,15 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				if (arg2_enc[2:1] == 0) begin
 					// imm16
 					arg2_src = `SRC_IMM16;
-				end
-				if (arg2_enc[2:1] == 1) begin
+				end else if (arg2_enc[2:1] == 1) begin
 					// [imm16]
 					arg2_src = `SRC_MEM;
 					addr_src = `SRC_IMM16;
 					addr_op = `OP_MOV;
+				end else if (arg2_enc[2:1] == 3) begin
+					// sp
+					arg2_src = `SRC_REG;
+					arg2_reg = `REG_INDEX_SP;
 				end
 			end
 		end
@@ -335,17 +340,18 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	// Need to take the imm16 into account here since when we push pc + 2*plus_pc_words, it has not been consumed yet.
 	wire [NSHIFT-1:0] plus_pc_words = long_inst ? 2'd2 : 2'd1;
 
+	wire special_reg2 = arg2_reg[LOG2_NR-1];
+
 	wire [LOG2_NR-1:0] arg1_reg = r;
 
 	wire [LOG2_NR-1:0] addr_reg2 = arg2_enc[2:0];
-	wire [LOG2_NR-1:0] arg2_reg = arg2_enc[2:0];
 	wire autoincdec_dir = arg2_enc[0] || push_pc_plus_n; // 1 = negative
 
 	wire cmp = cmptest && !d;
 	wire test = cmptest && d;
 	wire update_dest = !cmptest;
 
-	wire use_alt_op = alt_op_available && arg2_pure_reg && d;
+	wire use_alt_op = alt_op_available && !special_reg2 && arg2_pure_reg && d;
 	wire sub_or_sbc = (cls == CLASS_ALU) && (binop == `OP_SUB || binop == `OP_SBC);
 
 	wire invert_src2 = use_alt_op && !sub_or_sbc;
@@ -362,9 +368,11 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire effective_d = d && !use_imm8 && !cmptest;
 
 	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus_n) ? `DEST_MEM : `DEST_REG ));
-	wire [LOG2_NR-1:0] reg_dest = arg1_reg;
 	wire [`SRC_BITS-1:0] src = arg2_src;
-	wire [LOG2_NR-1:0] reg_src = arg2_reg;
+	// swap_arg1_arg2 is only high when both args are registers
+	wire swap_arg1_arg2 = special_reg2 && (effective_d && (cls != CLASS_SHIFT));
+	wire [LOG2_NR-1:0] reg_dest = swap_arg1_arg2 ? arg2_reg : arg1_reg;
+	wire [LOG2_NR-1:0] reg_src  = swap_arg1_arg2 ? arg1_reg : arg2_reg;
 	wire addr_wide2 = (addr_src == `SRC_IMM16);
 
 	wire double_src2 = push_pc_plus_n; // There are other cases when the scheduler sets double_arg2 based on its inputs.
@@ -397,7 +405,7 @@ module decoder #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire do_swap = (cls == CLASS_SWAP);
 
-	scheduler #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
+	scheduler #( .LOG2_NR(4), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
 		.clk(clk), .reset(reset),
 		.inst_valid(inst_valid), .inst_done(sc_inst_done),
 		.wide(wide), .wide2(wide2),

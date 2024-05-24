@@ -14,7 +14,7 @@ REG_BITS_MASK = (1 << REG_BITS) - 1
 PAIR_BITS_MASK = (1 << PAIR_BITS) - 1
 NREGS = 1 << LOG2_NR
 
-REG_INDEX_SP = 6
+REG_INDEX_SP_GR = 6
 
 
 def sext(value, pair=False):
@@ -35,6 +35,7 @@ def szext(value, pair=False, sext=False):
 class State:
 	def __init__(self):
 		self.regs = [0 for i in range(NREGS)]
+		self.sp = 0
 		self.carry = 0
 		self.pc = 0xfffc # Currently, the first instruction is fetched from address 0xfffc.
 		self.ram_emu = MockRAMEmulator(delay=1)
@@ -69,20 +70,32 @@ class State:
 			self.regs[index | 1] = (value >> REG_BITS) & REG_BITS_MASK
 		else: self.regs[index] = value & REG_BITS_MASK
 
+	def get_sp(self, wide):
+		if wide: return self.sp + 0x100
+		else:    return self.sp
+
+	def set_sp(self, value): self.sp = value & 0xff
+
 	def set_dest(self, dest, value):
 		value &= bitmask(dest.wide)
 		if isinstance(dest, ArgReg):
 			self.set_reg(dest.get_reg(), value, dest.wide)
+		elif isinstance(dest, ArgRegSP):
+			self.set_sp(value)
 		elif isinstance(dest, ArgMem):
 			self.ram_emu.write_mem(dest.get_addr(self), value, dest.wide)
 		else:
 			raise TypeError("Unsupported dest type: ", type(dest))
 
 	def apply(self, alu):
-		regs = alu.registers.regs
+		regs   = alu.registers
+		g_regs = regs.general_registers.regs
+		sp_reg = regs.sp_register.regs
 
 		alu.carry.value = self.carry
-		for i in range(NREGS): regs[i].value = self.regs[i]
+		for i in range(NREGS): g_regs[i].value = self.regs[i]
+		sp_reg.value = self.sp
+
 
 
 def nbits(pair): return PAIR_BITS if pair else REG_BITS
@@ -359,6 +372,20 @@ class ArgZextReg(Arg):
 
 	def __str__(self):
 		return f"ArgZextReg({self.reg})"
+
+class ArgRegSP(Arg):
+	"""sp"""
+	def __init__(self, wide):
+		super().__init__(wide)
+
+	def get_value(self, state=None):
+		return state.get_sp(self.wide)
+
+	def encode(self, is_dest=False, T=None, extra_dest=None):
+		return 7
+
+	def __str__(self):
+		return f"ArgRegSP()"
 
 
 class ArgImm(Arg):
@@ -802,10 +829,10 @@ class Jump(Instruction):
 
 	def execute(self, state):
 		if self.call:
-			push_addr  = (state.get_reg(REG_INDEX_SP, pair=True) - 2) & 0xffff
+			push_addr  = (state.get_reg(REG_INDEX_SP_GR, pair=True) - 2) & 0xffff
 			step_size = 1 + self.arg.get_extra_words()
 			push_value = (state.get_pc() + 2*step_size) & 0xffff
-			state.set_reg(REG_INDEX_SP, push_addr, pair=True)
+			state.set_reg(REG_INDEX_SP_GR, push_addr, pair=True)
 			state.ram_emu.read_mem(push_addr, True)
 			state.ram_emu.write_mem(push_addr, push_value, True)
 
@@ -857,9 +884,9 @@ class Branch(Instruction):
 
 	def execute(self, state):
 		if self.cc == CCNum.CALL.value:
-			push_addr  = (state.get_reg(REG_INDEX_SP, pair=True) - 2) & 0xffff
+			push_addr  = (state.get_reg(REG_INDEX_SP_GR, pair=True) - 2) & 0xffff
 			push_value = (state.get_pc() + 2) & 0xffff
-			state.set_reg(REG_INDEX_SP, push_addr, pair=True)
+			state.set_reg(REG_INDEX_SP_GR, push_addr, pair=True)
 			state.ram_emu.read_mem(push_addr, True)
 			state.ram_emu.write_mem(push_addr, push_value, True)
 
@@ -930,19 +957,20 @@ def rand_arg(wide, is_src=False, d_symmetry=True, zp_ok=True):
 		elif n == 1: return rand_arg_imm16(wide)
 		else: assert False
 
-	n = (not zp_ok) + randrange(5+zp_ok+is_src+(1+d_symmetry)*(is_src and wide))
+	n = (not zp_ok) + randrange(6+zp_ok+is_src+(1+d_symmetry)*(is_src and wide))
 	if   n == 0: return rand_arg_mem_zp(wide)
 	elif n == 1: return rand_arg_mem_r16r8(wide)
 	elif n == 2: return rand_arg_mem_r16incdec(wide)
 	elif n == 3: return rand_arg_mem_r16imm2(wide)
 	elif n == 4: return rand_arg_reg(wide)
-	elif n == 5: return rand_arg_mem_imm16(wide)
+	elif n == 5: return ArgRegSP(wide)
+	elif n == 6: return rand_arg_mem_imm16(wide)
 	# is_src:
-	elif n == 6: return rand_arg_imm16(wide)
+	elif n == 7: return rand_arg_imm16(wide)
 	# is_src and wide:
-	elif n == 7: return rand_arg_sext_reg(wide)
+	elif n == 8: return rand_arg_sext_reg(wide)
 	# is_src and wide and d_symmetry:
-	elif n == 8: return rand_arg_zext_reg(wide)
+	elif n == 9: return rand_arg_zext_reg(wide)
 	else: assert False
 
 def rand_arg_mem(wide, is_src=False, d_symmetry=True, zp_ok=True):

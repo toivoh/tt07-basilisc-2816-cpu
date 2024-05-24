@@ -49,14 +49,15 @@ module tb ();
 	wire [MSG_TYPE_BITS-1:0] msg_entry3 = top.cpu.fifo.entries[3];
 
 	localparam REG_BITS = 8;
-	wire [REG_BITS-1:0] r0 = top.cpu.dec.sched.alu.registers.regs[0];
-	wire [REG_BITS-1:0] r1 = top.cpu.dec.sched.alu.registers.regs[1];
-	wire [REG_BITS-1:0] r2 = top.cpu.dec.sched.alu.registers.regs[2];
-	wire [REG_BITS-1:0] r3 = top.cpu.dec.sched.alu.registers.regs[3];
-	wire [REG_BITS-1:0] r4 = top.cpu.dec.sched.alu.registers.regs[4];
-	wire [REG_BITS-1:0] r5 = top.cpu.dec.sched.alu.registers.regs[5];
-	wire [REG_BITS-1:0] r6 = top.cpu.dec.sched.alu.registers.regs[6];
-	wire [REG_BITS-1:0] r7 = top.cpu.dec.sched.alu.registers.regs[7];
+	wire [REG_BITS-1:0] r0 = top.cpu.dec.sched.alu.registers.general_registers.regs[0];
+	wire [REG_BITS-1:0] r1 = top.cpu.dec.sched.alu.registers.general_registers.regs[1];
+	wire [REG_BITS-1:0] r2 = top.cpu.dec.sched.alu.registers.general_registers.regs[2];
+	wire [REG_BITS-1:0] r3 = top.cpu.dec.sched.alu.registers.general_registers.regs[3];
+	wire [REG_BITS-1:0] r4 = top.cpu.dec.sched.alu.registers.general_registers.regs[4];
+	wire [REG_BITS-1:0] r5 = top.cpu.dec.sched.alu.registers.general_registers.regs[5];
+	wire [REG_BITS-1:0] r6 = top.cpu.dec.sched.alu.registers.general_registers.regs[6];
+	wire [REG_BITS-1:0] r7 = top.cpu.dec.sched.alu.registers.general_registers.regs[7];
+	wire [REG_BITS-1:0] sp = top.cpu.dec.sched.alu.registers.sp_register.regs;
 `endif
 
 	localparam CC_ALWAYS = `CC_ALWAYS;

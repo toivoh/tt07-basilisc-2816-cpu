@@ -28,7 +28,7 @@ async def test_cpu0(dut):
 		sched = decoder.sched
 		alu = sched.alu
 		regfile = alu.registers
-		regs = regfile.regs
+		regs = regfile.general_registers.regs
 
 		#for i in range(NREGS): regs[i].value = i**2
 
@@ -51,6 +51,13 @@ async def test_cpu0(dut):
 			for w in encoded:
 				mem[pc] = w
 				pc = (pc + 1) & 0x7fff
+
+		if False:
+			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
+
+			encode(Binop(BinopNum.MOV, ArgRegSP(False), ArgReg(False, 1)))
+			encode(Binop(BinopNum.MOV, ArgReg(False, 3), ArgRegSP(False)))
+			encode(Binop(BinopNum.MOV, ArgReg(True, 4), ArgRegSP(True)))
 
 		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
@@ -184,11 +191,11 @@ async def test_cpu(dut):
 	except AttributeError:
 		preserved = False
 
-	if preserved:
-		sched = decoder.sched
-		alu = sched.alu
-		regfile = alu.registers
-		regs = regfile.regs
+#	if preserved:
+#		sched = decoder.sched
+#		alu = sched.alu
+#		regfile = alu.registers
+#		regs = regfile.regs
 
 		#for i in range(NREGS): regs[i].value = i**2
 
@@ -261,6 +268,7 @@ async def test_cpu(dut):
 
 	# Intialize all registers to avoid problems with X
 	for i in range(0, 8, 2): exec(Binop(BinopNum.MOV, ArgReg(True, i), ArgImm8(True, 0)))
+	exec(Binop(BinopNum.MOV, ArgRegSP(False), ArgReg(False, 0)))
 
 	# Test every short call instruction
 	for offset in range(-128, 128):
@@ -398,6 +406,12 @@ async def test_cpu(dut):
 		# Read out the state so that the MockRAMEmulator will check it
 		for i in range(2):
 			exec(Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 4*i, 0), ArgReg(True, 4*i+2)))
+		# Read out sp and re-randomize the affected register
+		# TODO: Use a push or pop instead
+		exec(Binop(BinopNum.MOV, ArgReg(True, 0), ArgRegSP(True)))
+		exec(Binop(BinopNum.MOV, ArgReg(True, 0), ArgMemR16PlusImm2(True, 0, 0)))
+
+
 		# TODO: read out flags so that we can test the values
 
 		# Randomize one register value
@@ -410,7 +424,7 @@ async def test_cpu(dut):
 
 	#print("pcs = ", pcs)
 
-	for i in range(200*n_tests):
+	for i in range(300*n_tests):
 		#tx, tx_fetch = dut.tx_pins.value.integer, dut.tx_fetch.value.integer
 		uo_out = dut.uo_out.value.integer
 		tx = uo_out & 3

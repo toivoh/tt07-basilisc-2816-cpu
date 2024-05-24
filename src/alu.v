@@ -197,13 +197,26 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		end
 	end
 
-	regfile #(.LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) registers(
+/*
+	regfile #(.LOG2_NR(3), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) registers(
 		.clk(clk), .reset(reset),
+		//.reg_index(reg_index), .reg_index2(reg_index2),
+		.reg_index(reg_index[2:0]), .reg_index2(reg_index2[2:0]),
+		.do_scan(do_scan), .do_scan2(do_scan2),
+		.scan_in(scan_in), .scan_in2(scan_in2),
+		.scan_out(scan_out), .scan_out2(scan_out2)
+	);
+*/
+
+	regfile_top #(.LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) registers(
+		.clk(clk), .reset(reset),
+		.bit_index(state),
 		.reg_index(reg_index), .reg_index2(reg_index2),
 		.do_scan(do_scan), .do_scan2(do_scan2),
 		.scan_in(scan_in), .scan_in2(scan_in2),
 		.scan_out(scan_out), .scan_out2(scan_out2)
 	);
+
 
 	// data_out also makes it possible to observe the register file, make sure that it stays that way
 	// so that it doesn't get optimized away.
