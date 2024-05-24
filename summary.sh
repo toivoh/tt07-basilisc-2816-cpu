@@ -12,9 +12,9 @@ echo
 echo "Cell usage"
 echo "=========="
 #cat runs/wokwi/reports/synthesis/1-synthesis.AREA_0.stat.rpt
-grep "Number of" runs/wokwi/reports/synthesis/1-synthesis.AREA_0.stat.rpt
-grep "dfxtp" runs/wokwi/reports/synthesis/1-synthesis.AREA_0.stat.rpt
-grep "Chip area" runs/wokwi/reports/synthesis/1-synthesis.AREA_0.stat.rpt
+grep "Number of" runs/wokwi/reports/synthesis/1-synthesis.AREA_*.stat.rpt
+grep "dfxtp" runs/wokwi/reports/synthesis/1-synthesis.AREA_*.stat.rpt
+grep "Chip area" runs/wokwi/reports/synthesis/1-synthesis.AREA_*.stat.rpt
 echo
 
 echo "Utilization"

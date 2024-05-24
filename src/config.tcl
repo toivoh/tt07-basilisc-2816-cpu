@@ -35,6 +35,8 @@ set ::env(CLOCK_PORT) {clk}
 # Allow inputs to change around falling clock edge
 set ::env(IO_PCT) 0.6
 
+set ::env(SYNTH_STRATEGY) "AREA 2"
+
 ## Try to reduce slew violations
 #set ::env(PL_RESIZER_MAX_SLEW_MARGIN)  30
 #set ::env(GLB_RESIZER_MAX_SLEW_MARGIN) 30
