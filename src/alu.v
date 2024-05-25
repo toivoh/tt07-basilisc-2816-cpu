@@ -33,6 +33,8 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 `ifdef USE_MULTIPLIER
 		output wire set_imm_top,
 		output wire [REG_BITS-1:0] next_imm_top_data,
+
+		input wire do_mul,
 `endif
 
 		output wire active, // When high, data in shifted on data_in and data_out (if used by the operation)
@@ -43,8 +45,8 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 		output wire [$clog2(2*REG_BITS/NSHIFT)-1:0] counter
 	);
-`ifdef USE_MULTIPLIER
-	assign set_imm_top = 0;
+`ifndef USE_MULTIPLIER
+	wire do_mul = 0;
 `endif
 
 	wire arg2_7bit;
@@ -150,7 +152,8 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	// not a register
 	reg [NSHIFT-1:0] result;
 	always @(*) begin
-		case (operation)
+		if (do_mul) result = mul_result;
+		else case (operation)
 			OP_ADD, OP_SUB, OP_ADC, OP_SBC: result = sum;
 			OP_AND: result = arg1_s & arg2_si;
 			OP_OR:  result = arg1_s | arg2_si;
@@ -186,7 +189,12 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	// Will scan second register for both bytes even if just using the lower one
 	assign reg_index2 = {pre_reg_index2[LOG2_NR-1:1], pair_op2 ? (rotate ? 1'b0 : second) : pre_reg_index2[0]};
 
-	wire next_carry = rotate ? scan_out2[NSHIFT-1] : sum[NSHIFT];
+	wire next_carry0 = rotate ? scan_out2[NSHIFT-1] : sum[NSHIFT];
+`ifdef USE_MULTIPLIER
+	wire next_carry = do_mul ? next_carry_mul : next_carry0;
+`else
+	wire next_carry = next_carry0;
+`endif
 	wire next_scarry = sum_v[NSHIFT];
 	always @(posedge clk) begin
 		if (!(rotate && (timed_rotate || last_ror1))) carry <= next_carry;
@@ -233,4 +241,38 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	// data_out also makes it possible to observe the register file, make sure that it stays that way
 	// so that it doesn't get optimized away.
 	assign data_out = output_scan_out ? scan_out : (do_swap_mem ? scan_out2 : result);
+
+
+	// Multiplier
+	// ==========
+`ifdef USE_MULTIPLIER
+	localparam MUL_SUM_BITS = REG_BITS + NSHIFT; // correct size?
+
+	wire [REG_BITS-1:0] partial   = imm_full[REG_BITS*2-1:REG_BITS];
+	wire [REG_BITS-1:0] p_factor  = imm_full[REG_BITS-1:0];
+	wire [NSHIFT-1:0] s_factor_in = scan_out;
+
+	wire mul_carry_in = (state == 0) ? 0 : carry; // TODO: when to keep the carry? When to force it to one?
+	wire [NSHIFT+1-1:0] s_factor_1 = s_factor_in + mul_carry_in;
+	wire [NSHIFT-1:0] s_factor_code = s_factor_1[NSHIFT-1:0]; // s_factor_code == 3 ==> multiply by -1
+	wire minus1 = (s_factor_code == 2'd3);
+	wire next_carry_mul = (s_factor_1[NSHIFT] == 1) || minus1;
+
+	reg [MUL_SUM_BITS-1:0] term; // not a register
+	always @(*) begin
+		case(s_factor_code)
+			0: term = 0;
+			1: term = p_factor;
+			2: term = p_factor << 1;
+			3: term = ~p_factor; // Need to add 1 to the sum in this case, minus1 indicates
+		endcase
+	end
+
+	wire [MUL_SUM_BITS-1:0] mul_sum = partial + term + minus1;
+
+	wire [NSHIFT-1:0] mul_result;
+	assign {next_imm_top_data, mul_result} = mul_sum;
+
+	assign set_imm_top = do_mul;
+`endif
 endmodule : ALU

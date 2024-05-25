@@ -310,6 +310,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.imm_full(imm_full),
 `ifdef USE_MULTIPLIER
 		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
+		.do_mul(0),
 `endif
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(src1_zero ? '0 : pc_data_in), .data_in2(data_in), .data_out(data_out),
