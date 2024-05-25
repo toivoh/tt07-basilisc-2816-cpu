@@ -115,9 +115,11 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	wire extend_arg2 = (second && !pair_op2) || (arg2_6bit && state == 3) || (arg2_2bit && state != 0);
 	wire [NSHIFT-1:0] arg2_01 = extend_arg2 ? ((sext2 && sign2) ? '1 : '0) : ((arg2_7bit && state == 3) ? arg2_0 & 2'b01 : arg2_0);
 
-	reg old_arg2_bit; // CONSIDER: Is this the same as sign2?
+	//reg old_arg2_bit; // Seems to be the same as sign2
+	//always @(posedge clk) old_arg2_bit <= arg2_01[NSHIFT-1];
+	wire old_arg2_bit = sign2;
+
 	assign arg2 = double_arg2 ? {arg2_01[NSHIFT-1-1:0], (state == 0) ? 1'b0 : old_arg2_bit} : arg2_01;
-	always @(posedge clk) old_arg2_bit <= arg2_01[NSHIFT-1];
 
 	reg carry;
 	//wire carry_in = (state == 0 && block_carry) ? do_sub : carry;
