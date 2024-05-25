@@ -60,6 +60,8 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 `ifdef USE_MULTIPLIER
 		output wire set_imm_top,
 		output wire [REG_BITS-1:0] next_imm_top_data,
+
+		input wire use_mul,
 `endif
 
 		output wire addr_stage, data_stage,
@@ -96,6 +98,10 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire [NSHIFT-1:0] rx_pins
 	);
 	localparam ROTATE_COUNT_BITS = $clog2(REG_BITS*2);
+
+`ifndef USE_MULTIPLIER
+	wire use_mul = 0;
+`endif
 
 	// Imm16 loading
 	// -------------
@@ -186,12 +192,30 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	assign need_addr = (src == `SRC_MEM) || (dest == `DEST_MEM); // Assume need_addr means that we send a read during the address stage
 	assign addr_stage = (stage == STAGE0) && need_addr;
-	assign any_rotate_stage = stage[STAGE_BIT_ANY_ROTATE];
-	assign ror1_stage = stage == STAGE_ROR1;
-	wire rotate_stage = stage == STAGE_ROTATE;
-	assign data_stage = !any_rotate_stage && !addr_stage;
 
-	assign inst_done = (op_done && (use_rotate ? rotate_stage : data_stage)) || (skip && !wait_for_imm16);
+	wire _any_rotate_stage  = stage[STAGE_BIT_ANY_ROTATE];
+	wire _ror1_stage = stage == STAGE_ROR1;
+	wire _rotate_stage = stage == STAGE_ROTATE;
+
+`ifdef USE_MULTIPLIER
+	assign any_rotate_stage = _any_rotate_stage && use_rotate;
+	assign ror1_stage = _ror1_stage   && use_rotate;
+	wire rotate_stage = _rotate_stage && use_rotate;
+
+	wire any_mul_stage = _any_rotate_stage && use_mul;
+	wire mul1_stage = _ror1_stage    && use_mul;
+	wire mul2_stage  = _rotate_stage && use_mul;
+`else
+	assign any_rotate_stage = _any_rotate_stage;
+	assign ror1_stage = _ror1_stage;
+	wire rotate_stage = _rotate_stage;
+`endif
+
+
+	assign data_stage = !_any_rotate_stage && !addr_stage;
+
+	//assign inst_done = (op_done && (use_rotate ? rotate_stage : data_stage)) || (skip && !wait_for_imm16);
+	assign inst_done = (op_done && (use_rotate ? _rotate_stage : (use_mul ? _ror1_stage : data_stage))) || (skip && !wait_for_imm16);
 
 	// rotate_count = 0 for a shift is always a no-op
 	assign no_op = (rotate_count[ROTATE_COUNT_BITS-1:1] == '0) && (rotate_stage || (any_rotate_stage && rotate_count[0] == 0));
@@ -296,6 +320,10 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	assign do_ror1 = ror1_stage && (rotate_count[0] == 1);
 
+`ifdef USE_MULTIPLIER
+	wire do_mul = any_mul_stage;
+`endif
+
 	ALU #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) alu (
 		.clk(clk), .reset(reset),
 		.op_done(op_done), .regfile_en(regfile_en), .advance(alu_en),
@@ -310,7 +338,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.imm_full(imm_full),
 `ifdef USE_MULTIPLIER
 		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
-		.do_mul(0),
+		.do_mul(do_mul),
 `endif
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(src1_zero ? '0 : pc_data_in), .data_in2(data_in), .data_out(data_out),

@@ -442,6 +442,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.imm_full(imm_full),
 `ifdef USE_MULTIPLIER
 		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
+		.use_mul(0),
 `endif
 		.reserve_tx(reserve_tx),
 		.addr_stage(addr_stage), .data_stage(data_stage), .block_tx_reply(block_tx_reply),
