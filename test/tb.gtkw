@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Fri May 24 06:45:39 2024
+[*] Sat May 25 05:16:48 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.vcd"
-[dumpfile_mtime] "Fri May 24 06:45:05 2024"
-[dumpfile_size] 40358771
+[dumpfile_mtime] "Sat May 25 05:16:29 2024"
+[dumpfile_size] 50624028
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.gtkw"
-[timestart] 137580000
+[timestart] 471300000
 [size] 2463 1372
 [pos] -1 -1
-*-23.000000 150490000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 521000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.cpu.
@@ -35,9 +35,7 @@ tb.top.cpu.pref.pc_data_in[1:0]
 -
 @28
 tb.top.cpu.pf_tx_command_valid
-@29
 tb.top.cpu.sc_tx_command_valid
-@28
 tb.top.cpu.tx_command_started
 tb.top.cpu.tx_command[1:0]
 @200
@@ -70,6 +68,10 @@ tb.r6[7:0]
 tb.r7[7:0]
 @200
 -
+@22
+tb.sp[7:0]
+@200
+-
 @28
 tb.top.cpu.pref.load_imm16
 tb.top.cpu.pref.next_imm_data
@@ -81,6 +83,18 @@ tb.top.cpu.pref.inst_reg_valid
 tb.top.cpu.pref.inst_reg[15:0]
 @200
 -
+@22
+tb.top.cpu.pref.pc[15:0]
+@28
+tb.top.cpu.pref.num_prefetched[1:0]
+tb.top.cpu.pref.num_flushed[1:0]
+@200
+-
+@28
+tb.top.cpu.block_prefetch
+tb.top.cpu.prefetch_idle
+@200
+-
 -decoder
 @28
 tb.top.cpu.dec.jump
@@ -88,8 +102,6 @@ tb.top.cpu.dec.need_pre_stage
 tb.top.cpu.dec.pre_stage
 @200
 -
-@28
-tb.top.cpu.dec.addr_reg1[2:0]
 @22
 tb.top.cpu.dec.arg2_enc[5:0]
 @28
@@ -176,13 +188,11 @@ tb.top.cpu.dec.sched.operation[2:0]
 -
 @28
 tb.top.cpu.dec.sched.external_arg1
-tb.top.cpu.dec.sched.reg1[2:0]
 tb.top.cpu.dec.sched.update_reg1
 @200
 -
 @28
 tb.top.cpu.dec.sched.external_arg2
-tb.top.cpu.dec.sched.reg2[2:0]
 @200
 -
 @28
@@ -314,7 +324,6 @@ tb.top.cpu.fifo.empty
 tb.top.cpu.fifo.full
 tb.top.cpu.fifo.last_entry[1:0]
 tb.top.cpu.fifo.new_entry[1:0]
-tb.top.cpu.fifo.num_entries[2:0]
 tb.top.cpu.fifo.remove
 tb.top.cpu.fifo.reset
 @200

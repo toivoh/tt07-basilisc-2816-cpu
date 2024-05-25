@@ -20,6 +20,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 		output wire reserve_tx,
 
+		input wire any_prefetched,
 		output wire load_imm16,
 		input wire imm16_loaded,
 		input wire [NSHIFT-1:0] imm_data_in,
@@ -431,7 +432,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.use_cc(use_cc), .cc(cc),
 		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .use_sar(use_sar), .use_shl(use_shl), .rotate_count(rotate_count),
 		.do_swap(do_swap),
-		.load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
+		.any_prefetched(any_prefetched), .load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data_in2), .next_imm_data(sc_next_imm_data),
 		.imm8_data_out(imm8_data_out),
 		.reserve_tx(reserve_tx),

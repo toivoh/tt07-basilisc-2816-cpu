@@ -233,7 +233,7 @@ class ArgMemR16IncDec(ArgMem):
 
 class ArgMemPushPopTop(ArgMem):
 	"""[push/pop/top]"""
-	def __init__(self, wide, dir): # push: dir=1, pop: dir=-1, top: dir = 0
+	def __init__(self, wide, dir=0): # push: dir=1, pop: dir=-1, top: dir = 0. Set dir=0 and it will be updated by execute if needed
 		assert -1 <= dir <= 1
 
 		super().__init__(wide)

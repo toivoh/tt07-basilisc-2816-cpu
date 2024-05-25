@@ -49,6 +49,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 		input wire do_swap,
 
+		input wire any_prefetched,
 		output wire load_imm16,
 		input wire imm16_loaded,
 		input wire [NSHIFT-1:0] imm_data_in,
@@ -210,7 +211,8 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	// Stage control outputs
 	// ---------------------
-	assign block_prefetch = execute && access_pc;
+ 	// If we will write to pc then there is no point in prefetching beyond one imm16 possibly needed by this instruction, save time by blocking
+	assign block_prefetch = (execute && access_pc) || (inst_valid && (dest == `DEST_PC) && any_prefetched);
 	assign write_pc_now   = execute && write_pc && prefetch_idle;
 
 	assign reserve_tx     = execute && will_write && !do_swap; // Swaps never wait to start a transaction after initial access, so don't need to reserve

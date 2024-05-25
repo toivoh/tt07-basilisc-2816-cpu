@@ -59,7 +59,7 @@ async def test_cpu0(dut):
 			encode(Binop(BinopNum.MOV, ArgReg(False, 3), ArgRegSP(False)))
 			encode(Binop(BinopNum.MOV, ArgReg(True, 4), ArgRegSP(True)))
 
-		if True:
+		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 
 			encode(Binop(BinopNum.MOV, ArgRegSP(False), ArgReg(False, 0)))
@@ -112,7 +112,11 @@ async def test_cpu0(dut):
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgMemImm16(True, 0xbcde)))
 			mem[0xbcde>>1] = 0xe4a5
 		if False:
-			encode(Binop(BinopNum.MOV, ArgReg(True, 6), ArgImm8(True, -128)))
+			#encode(Binop(BinopNum.MOV, ArgReg(True, 6), ArgImm8(True, -128))) # set sp old style
+
+			encode(Binop(BinopNum.MOV, ArgReg(False, 0), ArgImm8(True, 0xff)))
+			encode(Binop(BinopNum.MOV, ArgRegSP(False), ArgReg(False, 0))) # set up sp
+
 			target_pc = pc + 8
 			#encode(Jump(ArgImm16(True, 2*target_pc)))
 			encode(Jump(ArgImm16(True, 2*target_pc), call=True))
@@ -120,6 +124,29 @@ async def test_cpu0(dut):
 				mem[pc] = 2048+pc; pc += 1
 			print("target_pc = ", target_pc)
 			print("pc = ", pc)
+
+		if False:
+			encode(Binop(BinopNum.MOV, ArgReg(False, 0), ArgImm8(False, 0xff)))
+			encode(Binop(BinopNum.MOV, ArgRegSP(False), ArgReg(False, 0))) # set up sp
+
+			target_pc = pc + 5
+			encode(Jump(ArgImm16(True, 2*target_pc))) # jump over function
+
+			# function
+			func_pc = pc
+			encode(Binop(BinopNum.MOV, ArgReg(False, 0), ArgImm8(False, 0xab))) # executed
+			encode(Jump(ArgMemPushPopTop(True))) # ret
+			encode(Binop(BinopNum.MOV, ArgReg(False, 0), ArgImm8(False, 0xcd))) # not executed
+
+			while pc < target_pc:
+				mem[pc] = 0xf00+pc; pc += 1
+
+			#encode(Jump(ArgImm16(True, 2*func_pc), call=True)) # call function
+			encode(Branch(func_pc - pc, cc=CCNum.CALL.value)) # call function
+			print("target_pc = ", target_pc)
+			print("func_pc = ", func_pc)
+			print("pc = ", pc)
+
 
 		# Sequence of instructions to make a prefetch be ongoing when the PC read starts
 		encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm8(True, 0)))
@@ -283,6 +310,9 @@ async def test_cpu(dut):
 		exec(Branch(offset, cc=CCNum.CALL.value))
 		for i in range(0, 2):
 			exec(Binop(BinopNum.MOV, ArgMemR16PlusImm2(True, 4*i, 0), ArgReg(True, 4*i+2)))
+
+	# Test ret
+	exec(Jump(ArgMemPushPopTop(True)))
 
 	# Try all even shl shift steps
 	for wide in [False, True]:

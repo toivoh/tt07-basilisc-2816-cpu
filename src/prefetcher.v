@@ -18,6 +18,7 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 		input wire feed_imm8,
 		input wire [IO_BITS-1:0] imm8_data_in,
 
+		output wire any_prefetched,
 		input wire load_imm16,
 		output wire imm16_loaded,
 		output wire [IO_BITS-1:0] imm_data_out,
@@ -195,4 +196,5 @@ module prefetcher #( parameter IO_BITS=2, PAYLOAD_CYCLES=8, PREFETCH_DEPTH=1, IM
 	end
 
 	assign pc_done = pc_next && (compensate ? (comp_counter == PAYLOAD_CYCLES-1) : (tx_counter == PAYLOAD_CYCLES-1));
+	assign any_prefetched = (num_prefetched != 0);
 endmodule : prefetcher
