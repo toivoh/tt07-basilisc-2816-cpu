@@ -29,6 +29,12 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 		input wire do_swap_reg, do_swap_mem,
 
+		input wire [2*REG_BITS-1:0] imm_full,
+`ifdef USE_MULTIPLIER
+		output wire set_imm_top,
+		output wire [REG_BITS-1:0] next_imm_top_data,
+`endif
+
 		output wire active, // When high, data in shifted on data_in and data_out (if used by the operation)
 		input wire [NSHIFT-1:0] data_in1, data_in2,
 		output wire [NSHIFT-1:0] data_out,
@@ -37,6 +43,10 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 		output wire [$clog2(2*REG_BITS/NSHIFT)-1:0] counter
 	);
+`ifdef USE_MULTIPLIER
+	assign set_imm_top = 0;
+`endif
+
 	wire arg2_7bit;
 	wire arg2_6bit;
 	wire arg2_2bit;

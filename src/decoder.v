@@ -17,6 +17,10 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		input wire [2*REG_BITS-1:0] imm_full,
 		output wire feed_imm8,
 		output wire [NSHIFT-1:0] imm8_data_out,
+`ifdef USE_MULTIPLIER
+		output wire set_imm_top,
+		output wire [REG_BITS-1:0] next_imm_top_data,
+`endif
 
 		output wire reserve_tx,
 
@@ -435,6 +439,10 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.any_prefetched(any_prefetched), .load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data_in2), .next_imm_data(sc_next_imm_data),
 		.imm8_data_out(imm8_data_out),
+		.imm_full(imm_full),
+`ifdef USE_MULTIPLIER
+		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
+`endif
 		.reserve_tx(reserve_tx),
 		.addr_stage(addr_stage), .data_stage(data_stage), .block_tx_reply(block_tx_reply),
 

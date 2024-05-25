@@ -110,10 +110,18 @@ module CPU #( parameter LOG2_NR=4, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, PREF
 	wire [IO_BITS-1:0] imm_data;
 	wire next_imm_data;
 
+`ifdef USE_MULTIPLIER
+	wire set_imm_top;
+	wire [REG_BITS-1:0] next_imm_top_data;
+`endif
+
 	prefetcher #( .IO_BITS(IO_BITS), .PAYLOAD_CYCLES(PAYLOAD_CYCLES), .PREFETCH_DEPTH(PREFETCH_QUEUE - 1) ) pref (
 		.clk(clk), .reset(reset),
 		.inst(inst), .inst_valid(inst_valid), .inst_done(inst_done),
 		.imm_reg(imm_full), .feed_imm8(feed_imm8), .imm8_data_in(imm8_data_to_pf),
+`ifdef USE_MULTIPLIER
+		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
+`endif
 		.any_prefetched(any_prefetched), .load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_out(imm_data), .next_imm_data(next_imm_data),
 
@@ -135,6 +143,7 @@ module CPU #( parameter LOG2_NR=4, REG_BITS=8, IO_BITS=2, PAYLOAD_CYCLES=8, PREF
 		.clk(clk), .reset(reset),
 		.inst(inst), .inst_valid(inst_valid), .inst_done(inst_done),
 		.imm_full(imm_full), .feed_imm8(feed_imm8), .imm8_data_out(imm8_data_to_pf),
+		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
 		.any_prefetched(any_prefetched), .load_imm16(load_imm16), .imm16_loaded(imm16_loaded),
 		.imm_data_in(imm_data), .next_imm_data(next_imm_data),
 		.reserve_tx(sc_reserve_tx),

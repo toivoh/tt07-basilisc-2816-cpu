@@ -56,6 +56,11 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		output wire next_imm_data,
 
 		output wire [NSHIFT-1:0] imm8_data_out,
+		input wire [2*REG_BITS-1:0] imm_full,
+`ifdef USE_MULTIPLIER
+		output wire set_imm_top,
+		output wire [REG_BITS-1:0] next_imm_top_data,
+`endif
 
 		output wire addr_stage, data_stage,
 		input block_tx_reply,
@@ -302,6 +307,10 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.update_carry_flags(update_carry_flags && !block_flag_updates), .update_other_flags(update_other_flags && !block_flag_updates),
 		.rotate(rotate), .timed_rotate(timed_rotate), .do_shr(do_shr), .do_sar(do_sar), .do_shl(do_shl), .do_ror1(do_ror1), .last_ror1(last_ror1), .rotate_count(rotate_count[ROTATE_COUNT_BITS-1:1]),
 		.do_swap_reg(do_swap_reg), .do_swap_mem(do_swap_mem),
+		.imm_full(imm_full),
+`ifdef USE_MULTIPLIER
+		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
+`endif
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(src1_zero ? '0 : pc_data_in), .data_in2(data_in), .data_out(data_out),
 		.counter(comp_counter)
