@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Sat May 25 05:16:48 2024
+[*] Sat May 25 11:55:51 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.vcd"
-[dumpfile_mtime] "Sat May 25 05:16:29 2024"
-[dumpfile_size] 50624028
+[dumpfile_mtime] "Sat May 25 11:55:04 2024"
+[dumpfile_size] 54747375
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb.gtkw"
-[timestart] 471300000
+[timestart] 157320000
 [size] 2463 1372
 [pos] -1 -1
-*-23.000000 521000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 183070000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.cpu.
@@ -95,6 +95,14 @@ tb.top.cpu.block_prefetch
 tb.top.cpu.prefetch_idle
 @200
 -
+@28
+tb.top.cpu.dec.sched.alu.mul_result[1:0]
+tb.top.cpu.dec.sched.alu.scan_in[1:0]
+tb.top.cpu.dec.sched.alu.update_reg1
+@22
+tb.top.cpu.dec.sched.alu.reg_index[3:0]
+@200
+-
 -decoder
 @28
 tb.top.cpu.dec.jump
@@ -128,6 +136,8 @@ tb.top.cpu.dec.sched.addr_stage
 tb.top.cpu.dec.sched.data_stage
 tb.top.cpu.dec.sched.ror1_stage
 tb.top.cpu.dec.sched.rotate_stage
+tb.top.cpu.dec.sched.mul1_stage
+tb.top.cpu.dec.sched.mul2_stage
 @200
 -
 @28
@@ -275,6 +285,30 @@ tb.top.cpu.dec.sched.flag_c
 tb.top.cpu.dec.sched.flag_v
 tb.top.cpu.dec.sched.flag_s
 tb.top.cpu.dec.sched.flag_z
+@200
+-
+@28
+tb.top.cpu.dec.sched.alu.do_mul
+@23
+tb.top.cpu.dec.sched.alu.partial[10:0]
+@22
+tb.top.cpu.dec.sched.alu.p_factor[7:0]
+@28
+tb.top.cpu.dec.sched.alu.s_factor_in[1:0]
+tb.top.cpu.dec.sched.alu.mul_carry_in
+tb.top.cpu.dec.sched.alu.s_factor_1[2:0]
+tb.top.cpu.dec.sched.alu.s_factor_code[1:0]
+tb.top.cpu.dec.sched.alu.minus1
+tb.top.cpu.dec.sched.alu.next_carry_mul
+@22
+tb.top.cpu.dec.sched.alu.mul_sum[10:0]
+@28
+tb.top.cpu.dec.sched.alu.mul_result[1:0]
+@200
+-
+@22
+tb.r4[7:0]
+tb.r5[7:0]
 @200
 -
 -CPU

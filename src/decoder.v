@@ -433,6 +433,10 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire do_swap = (cls == CLASS_SWAP);
 
+`ifdef USE_MULTIPLIER
+	wire mul_only = use_mul;
+`endif
+
 	scheduler #( .LOG2_NR(4), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(
 		.clk(clk), .reset(reset),
 		.inst_valid(inst_valid), .inst_done(sc_inst_done),
@@ -453,7 +457,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.imm_full(imm_full),
 `ifdef USE_MULTIPLIER
 		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
-		.use_mul(use_mul),
+		.use_mul(use_mul), .mul_only(mul_only),
 `endif
 		.reserve_tx(reserve_tx),
 		.addr_stage(addr_stage), .data_stage(data_stage), .block_tx_reply(block_tx_reply),

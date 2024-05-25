@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Fri May 24 06:45:41 2024
+[*] Sat May 25 11:55:53 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.vcd"
-[dumpfile_mtime] "Fri May 24 06:39:18 2024"
-[dumpfile_size] 14549496
+[dumpfile_mtime] "Sat May 25 11:53:54 2024"
+[dumpfile_size] 13673720
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.gtkw"
-[timestart] 590430000
-[size] 2988 1720
+[timestart] 0
+[size] 2988 1359
 [pos] -1 -1
-*-23.000000 205950000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 58000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb_decoder.
 [treeopen] tb_decoder.dec.
 [treeopen] tb_decoder.dec.sched.
 [sst_width] 297
 [signals_width] 246
 [sst_expanded] 1
-[sst_vpaned_height] 554
+[sst_vpaned_height] 425
 @28
 tb_decoder.reset
 tb_decoder.clk
@@ -61,7 +61,6 @@ tb_decoder.mem_if.tx_data_next
 -
 @28
 tb_decoder.mem_if.rx_started
-@29
 tb_decoder.mem_if.rx_data_valid
 @200
 -
@@ -77,24 +76,15 @@ tb_decoder.dec.sched.tx_data_wait
 tb_decoder.dec.sched.wait_for_mem
 @200
 -
-@28
-tb_decoder.dec.sched.alu.reg1[2:0]
-tb_decoder.dec.sched.alu.reg2[2:0]
-@200
 -
 -Decoder
 @28
 tb_decoder.dec.mdz[2:0]
 @200
 -
-@28
-tb_decoder.dec.arg2_reg[2:0]
-@200
 -
 @28
 tb_decoder.dec.addr_op
-tb_decoder.dec.addr_reg1[2:0]
-tb_decoder.dec.addr_reg2[2:0]
 tb_decoder.dec.addr_wide2
 @200
 -
@@ -188,5 +178,38 @@ tb_decoder.dec.sched.alu.arg1_s[1:0]
 tb_decoder.dec.sched.alu.arg2[1:0]
 tb_decoder.dec.sched.alu.arg2_s[1:0]
 tb_decoder.dec.sched.alu.arg2_si[1:0]
+@200
+-
+@28
+tb_decoder.dec.sched.alu.do_mul
+@22
+tb_decoder.dec.sched.alu.partial[7:0]
+tb_decoder.dec.sched.alu.p_factor[7:0]
+@28
+tb_decoder.dec.sched.alu.s_factor_in[1:0]
+tb_decoder.dec.sched.alu.mul_carry_in
+tb_decoder.dec.sched.alu.s_factor_1[2:0]
+tb_decoder.dec.sched.alu.s_factor_code[1:0]
+tb_decoder.dec.sched.alu.minus1
+tb_decoder.dec.sched.alu.next_carry_mul
+@22
+tb_decoder.dec.sched.alu.term[9:0]
+tb_decoder.dec.sched.alu.mul_sum[9:0]
+@28
+tb_decoder.dec.sched.alu.mul_result[1:0]
+@23
+tb_decoder.dec.sched.alu.next_imm_top_data[7:0]
+@200
+-
+-
+@22
+tb_decoder.r0[7:0]
+tb_decoder.r1[7:0]
+tb_decoder.r2[7:0]
+tb_decoder.r3[7:0]
+tb_decoder.r4[7:0]
+tb_decoder.r5[7:0]
+tb_decoder.r6[7:0]
+tb_decoder.r7[7:0]
 [pattern_trace] 1
 [pattern_trace] 0

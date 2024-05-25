@@ -848,6 +848,63 @@ class Shift(Instruction):
 			return [enc] + extra
 
 
+class Mul(Instruction):
+	def __init__(self, arg1, arg2):
+		assert isinstance(arg1, ArgReg)
+		assert isinstance(arg2, ArgImm6)
+		self.wide = arg1.wide
+		assert not arg2.wide
+
+		super().__init__()
+		self.arg1 = arg1
+		self.arg2 = arg2
+
+	def execute(self, state):
+		# Calculate memory addresses before applying side effects (postincrement/predecrement)
+		if isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
+
+		self.arg2.apply_side_effect(state)
+
+		# Read registers as data after applying side effects, even postincrement
+		arg1 = self.arg1.get_value(state) # Always a register
+		if not isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
+
+		if isinstance(self.arg2, ArgImm6): arg2 = arg2 & 0x3f
+		else:                              arg2 = arg2 & 0xff
+
+		result = arg1 * arg2
+
+		result = result & bitmask(self.wide)
+
+		print("mul(", self.wide, ", ", str(self.arg1), ":", hex(arg1), ", ", str(self.arg2), ":", hex(arg2), ") =", hex(result))
+
+		state.set_dest(self.arg1.get_dest(state), result)
+		state.step_pc(1 + self.arg2.get_extra_words())
+
+	def encode(self):
+		reg1 = self.arg1.get_reg()
+		extra = []
+
+		if isinstance(self.arg2, ArgImm6):
+			assert (reg1&6) != 0 # currently not supported
+
+			# 111111
+			# 5432109876543210
+			# 001g00rr0ziiiiii	mul r8,  imm7
+			# 000100rr0ziiiiii	mul r16, imm7
+			prefix = 1 if self.wide else 2 | (reg1&1)
+			m, d, z = 0, 0, 0
+			o = 0
+
+			arg2_enc = self.arg2.encode(T=ArgImm6, extra_dest=extra)
+
+			enc = (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|d) << 7) | (z << 6) | arg2_enc
+			return [enc] + extra
+
+		else:
+			assert False # not supported
+
+
 class Jump(Instruction):
 	def __init__(self, arg, call=False):
 		assert isinstance(arg, Arg)

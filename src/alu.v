@@ -7,7 +7,7 @@
 
 `include "common.vh"
 
-module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
+module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		input wire clk, reset,
 
 		// Raised on last cycle of op: Must get a new op on next cycle or get op_valid = 0
@@ -48,6 +48,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 `ifndef USE_MULTIPLIER
 	wire do_mul = 0;
 	wire [NSHIFT-1:0] mul_result = 0;
+	wire next_sign2_mul = 0;
 `endif
 
 	wire arg2_7bit;
@@ -199,7 +200,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	wire next_scarry = sum_v[NSHIFT];
 	always @(posedge clk) begin
 		if (!(rotate && (timed_rotate || last_ror1))) carry <= next_carry;
-		sign2 <= arg2_01[NSHIFT-1];
+		sign2 <= do_mul ? next_sign2_mul : arg2_01[NSHIFT-1];
 
 		if (reset) begin
 			flag_c <= 0;
@@ -247,13 +248,15 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	// Multiplier
 	// ==========
 `ifdef USE_MULTIPLIER
-	localparam MUL_SUM_BITS = REG_BITS + NSHIFT; // correct size?
+	localparam MUL_SUM_BITS = REG_BITS + NSHIFT + 1;
 
-	wire [REG_BITS-1:0] partial   = imm_full[REG_BITS*2-1:REG_BITS];
+	wire first_mul_cycle = (state == 0); // TODO: don't set in mul stage 2
+
+	wire signed [MUL_SUM_BITS-1:0] partial = first_mul_cycle ? '0 : {{(NSHIFT+1){sign2}}, imm_full[REG_BITS*2-1:REG_BITS]};
 	wire [REG_BITS-1:0] p_factor  = imm_full[REG_BITS-1:0];
 	wire [NSHIFT-1:0] s_factor_in = scan_out;
 
-	wire mul_carry_in = (state == 0) ? 0 : carry; // TODO: when to keep the carry? When to force it to one?
+	wire mul_carry_in = first_mul_cycle ? 0 : carry;
 	wire [NSHIFT+1-1:0] s_factor_1 = s_factor_in + mul_carry_in;
 	wire [NSHIFT-1:0] s_factor_code = s_factor_1[NSHIFT-1:0]; // s_factor_code == 3 ==> multiply by -1
 	wire minus1 = (s_factor_code == 2'd3);
@@ -272,7 +275,8 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	wire [MUL_SUM_BITS-1:0] mul_sum = partial + term + minus1;
 
 	wire [NSHIFT-1:0] mul_result;
-	assign {next_imm_top_data, mul_result} = mul_sum;
+	wire next_sign2_mul;
+	assign {next_sign2_mul, next_imm_top_data, mul_result} = mul_sum;
 
 	assign set_imm_top = do_mul;
 `endif

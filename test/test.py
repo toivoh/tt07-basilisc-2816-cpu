@@ -53,6 +53,12 @@ async def test_cpu0(dut):
 				pc = (pc + 1) & 0x7fff
 
 		if False:
+			#encode(Binop(BinopNum.MOV, ArgReg(True, 4), ArgImm16(True, 0x0706)))
+			#encode(Mul(ArgReg(True, 4), ArgImm6(False, 0x1f)))
+
+			encode(Binop(BinopNum.MOV, ArgReg(True, 4), ArgImm16(True, 0x7775)))
+			encode(Mul(ArgReg(True, 4), ArgImm6(False, 0x24 - 64)))
+		if False:
 			encode(Binop(BinopNum.MOV, ArgReg(True, 0), ArgImm16(True, 0x1234)))
 
 			encode(Binop(BinopNum.MOV, ArgRegSP(False), ArgReg(False, 1)))
@@ -386,7 +392,7 @@ async def test_cpu(dut):
 
 
 	for iter in range(n_tests):
-		rnd = randrange(12)
+		rnd = randrange(13)
 		wide = randbool() # used by most cases below
 		if rnd == 0:
 			if randbool():
@@ -416,6 +422,8 @@ async def test_cpu(dut):
 		elif rnd == 4:
 			opnum = choice([BinopNum.REVSUB, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
 			inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
+		elif rnd == 5:
+			inst = Mul(ArgReg(wide, randrange(2, 8) & (6 if wide else 7)), rand_arg_imm6(False))
 		else:
 			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.TEST, BinopNum.MOV])
 			no_d = opnum in (BinopNum.CMP, BinopNum.TEST)

@@ -7,7 +7,7 @@
 
 `include "common.vh"
 
-module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) (
+module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) (
 		input wire clk, reset,
 
 		// Once inst_valid has become 1, it and the instruction parameters must remain stable
@@ -61,7 +61,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		output wire set_imm_top,
 		output wire [REG_BITS-1:0] next_imm_top_data,
 
-		input wire use_mul,
+		input wire use_mul, mul_only,
 `endif
 
 		output wire addr_stage, data_stage,
@@ -101,6 +101,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 `ifndef USE_MULTIPLIER
 	wire use_mul = 0;
+	wire mul_only = 0;
 `endif
 
 	// Imm16 loading
@@ -219,7 +220,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 	// rotate_count = 0 for a shift is always a no-op
 	assign no_op = (rotate_count[ROTATE_COUNT_BITS-1:1] == '0) && (rotate_stage || (any_rotate_stage && rotate_count[0] == 0));
-	assign skip_stage = inst_valid && (rotate_only && !any_rotate_stage) || (ror1_stage && (rotate_count[0] == 0) && !use_sar && !use_shl);
+	assign skip_stage = inst_valid && ((rotate_only || mul_only) && !_any_rotate_stage) || (ror1_stage && (rotate_count[0] == 0) && !use_sar && !use_shl);
 
 	// Stage properties
 	// ----------------
@@ -279,7 +280,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire active;
 	wire [NSHIFT-1:0] data_out;
 
-	assign next_imm_data = (curr_src_imm || (use_rotate && data_stage)) && active && !any_rotate_stage;
+	assign next_imm_data = (curr_src_imm || (use_rotate && data_stage)) && active && !(any_rotate_stage || any_mul_stage);
 	assign ext_pc_next = access_pc && active;
 
 	assign pc_data_out = data_out;
@@ -296,7 +297,7 @@ module scheduler #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire [LOG2_NR-1:0] reg1 = addr_stage ? addr_reg1 : reg_dest;
 	wire [LOG2_NR-1:0] reg2 = addr_stage ? reg_addr_src : reg_src;
 	wire [NSHIFT-1:0] data_in = curr_src_imm ? imm_data_in : rx_pins; // Must wait for rx_pins to contain the right data
-	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && ((dest == `DEST_REG) || do_swap) && update_dest);
+	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && ((dest == `DEST_REG) || do_swap) && update_dest) || mul1_stage;
 	wire reverse_args = data_stage && ((dest == `DEST_MEM) && !curr_src_imm) || force_reverse_args; // Can we have an immediate source and a memory destination at the same time?
 
 	// Should we double r8 in [r16 + r8] for 16 bit wide operations?
