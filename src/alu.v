@@ -47,6 +47,7 @@ module ALU #( parameter LOG2_NR=3, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	);
 `ifndef USE_MULTIPLIER
 	wire do_mul = 0;
+	wire [NSHIFT-1:0] mul_result = 0;
 `endif
 
 	wire arg2_7bit;

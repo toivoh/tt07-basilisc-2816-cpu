@@ -103,7 +103,8 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	localparam CLASS_MOV = 1; // Also used for jumps
 	localparam CLASS_SWAP = 2;
 	localparam CLASS_SHIFT = 3;
-	localparam CLASS_INCDECZERO = 4;
+	//localparam CLASS_INCDECZERO = 4;
+	localparam CLASS_MUL = 4;
 
 	localparam IDZ_ILLEGAL = 0;
 	localparam IDZ_ZERO    = 1;
@@ -138,6 +139,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg jump;
 	reg cmptest;
 	reg alt_op_available;
+	reg use_mul;
 	//reg [NSHIFT-1:0] plus_pc_words;
 	always @(*) begin
 		cls = 'X;
@@ -154,6 +156,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		cmptest = 0;
 		alt_op_available = 0;
 		//plus_pc_words = 'X;
+		use_mul = 0;
 
 //				111111
 //				5432109876543210
@@ -207,7 +210,14 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 							src1_from_pc = pre_stage;
 						end
 					end else begin
-						cls = CLASS_INCDECZERO;
+						//cls = CLASS_INCDECZERO;
+
+`ifdef USE_MULTIPLIER
+						// Use all this encoding space for mul r, imm7 for now. Regs 0 and 1 are taken by the jump/call instructions above.
+						cls = CLASS_MUL;
+						use_mul = 1;
+						use_imm8 = 1;
+`endif
 					end
 				end
 				if ({m, d} == 2'b01) cls = CLASS_SWAP;
@@ -343,6 +353,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 					addr_reg1 = `REG_INDEX_SP;
 					addr_src_sext2 = 1;
 					autoincdec = 1;
+					// TODO: Do pop for ALU instructions that read, and shift instructions
 					autoincdec_update = (cls == CLASS_MOV); // Turn off actual update for RMW operations, and set autoincdec_dir=0
 					autoincdec_dir = effective_d && autoincdec_update; // TODO correct?
 				end else if (arg2_enc[2:1] == 3) begin
@@ -379,15 +390,15 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : (use_rol || cmp ? `OP_SUB : (test ? `OP_AND : ((cls == CLASS_ALU) ? binop : `OP_MOV)));
 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
-	wire update_other_flags = (cls == CLASS_ALU || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
-	wire update_carry_flags = ((cls == CLASS_ALU && (cmp || !binop[`OP_BIT_NADD])) || /*cls == CLASS_SHIFT ||*/ cls == CLASS_INCDECZERO);
+	wire update_other_flags = (cls == CLASS_ALU /*|| cls == CLASS_SHIFT || cls == CLASS_INCDECZERO*/);
+	wire update_carry_flags = ((cls == CLASS_ALU && (cmp || !binop[`OP_BIT_NADD])) /*|| cls == CLASS_SHIFT || cls == CLASS_INCDECZERO*/);
 
 	wire effective_d = d && !use_imm8 && !cmptest;
 
 	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus_n) ? `DEST_MEM : `DEST_REG ));
 	wire [`SRC_BITS-1:0] src = arg2_src;
 	// swap_arg1_arg2 is only high when both args are registers
-	wire swap_arg1_arg2 = special_reg2 && (effective_d && (cls != CLASS_SHIFT));
+	wire swap_arg1_arg2 = special_reg2 && (effective_d && (cls != CLASS_SHIFT) && (cls != CLASS_MUL));
 	wire [LOG2_NR-1:0] reg_dest = swap_arg1_arg2 ? arg2_reg : arg1_reg;
 	wire [LOG2_NR-1:0] reg_src  = swap_arg1_arg2 ? arg1_reg : arg2_reg;
 	wire addr_wide2 = (addr_src == `SRC_IMM16);
@@ -442,7 +453,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.imm_full(imm_full),
 `ifdef USE_MULTIPLIER
 		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
-		.use_mul(0),
+		.use_mul(use_mul),
 `endif
 		.reserve_tx(reserve_tx),
 		.addr_stage(addr_stage), .data_stage(data_stage), .block_tx_reply(block_tx_reply),
