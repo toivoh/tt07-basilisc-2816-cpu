@@ -537,9 +537,8 @@ class Binop(Instruction):
 		return self.arg1.get_dest(state)
 
 	def adjust(self):
-		if self.binop == BinopNum.MOV:
-			if isinstance(self.arg1, ArgMemPushPopTop): self.arg1.dir =  1 # push
-			if isinstance(self.arg2, ArgMemPushPopTop): self.arg2.dir = -1 # pop
+		if isinstance(self.arg1, ArgMemPushPopTop) and self.binop == BinopNum.MOV: self.arg1.dir =  1 # push
+		if isinstance(self.arg2, ArgMemPushPopTop):                                self.arg2.dir = -1 # pop
 
 	def execute(self, state):
 		self.adjust()
@@ -776,7 +775,11 @@ class Shift(Instruction):
 		self.arg1 = arg1
 		self.arg2 = arg2
 
+	def adjust(self):
+		if isinstance(self.arg2, ArgMemPushPopTop): self.arg2.dir = -1 # pop
+
 	def execute(self, state):
+		self.adjust()
 
 		# Calculate memory addresses before applying side effects (postincrement/predecrement)
 		if isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
@@ -859,7 +862,12 @@ class Mul(Instruction):
 		self.arg1 = arg1
 		self.arg2 = arg2
 
+	def adjust(self):
+		if isinstance(self.arg2, ArgMemPushPopTop): self.arg2.dir = -1 # pop
+
 	def execute(self, state):
+		self.adjust()
+
 		# Calculate memory addresses before applying side effects (postincrement/predecrement)
 		if isinstance(self.arg2, ArgMem): arg2 = self.arg2.get_value(state)
 

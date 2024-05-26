@@ -141,6 +141,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg alt_op_available;
 	reg use_mul;
 	//reg [NSHIFT-1:0] plus_pc_words;
+	reg effective_d;
 	always @(*) begin
 		cls = 'X;
 		//cls = CLASS_MOV;
@@ -157,6 +158,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		alt_op_available = 0;
 		//plus_pc_words = 'X;
 		use_mul = 0;
+		effective_d = d;
 
 //				111111
 //				5432109876543210
@@ -168,10 +170,12 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 //		(r, s)	(r, imm6)	(d, r)	(d, r)b		(r, zp)x2	(zp, r)x2
 //	8x	<-------- binop --------->	shift r, s	<------ binop ------>
 			cls = (mdz == 3'b111) ? CLASS_SHIFT : CLASS_ALU;
+			if (mdz == 3'b111) effective_d = 0;
 			r = {rr, e & !wide}; // Would have been easier if r[0] could be 1. Can r[0] be ignored when wide=1?
 			shift_op = aaa;
 			cmptest = (aaa == 3'b111);
 			alt_op_available = !cmptest && !(mdz == 3'b111);
+			if (cmptest) effective_d = 0;
 		end else if (aaa[2] == 1 || aaa[1] == 1) begin
 //				001gomrrdziiiiii	2^13 r8:  mov/shift/swap/inc/dec/zero
 //				0001omrrdziiiiii	2^12 r16: mov/shift/swap/inc/dec/zero
@@ -186,7 +190,10 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 //		100 	101 		110 	111 		00x 		01x
 //		(r, s)	(r, imm6)	(d, r)	(d, r)b		(r, zp)x2	(zp, r)x2
 //	1x	<---------- mov r, imm8 ---------->		inc/dec/zero zp	swap
-				if (m == 1) use_imm8 = 1;
+				if (m == 1) begin
+					use_imm8 = 1;
+					effective_d = 0;
+				end
 				if ({m, d} == 2'b00) begin
 					if (rr == 0) begin
 						jump = normal_stage;
@@ -245,6 +252,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 			branch = 1;
 			src1_from_pc = 1;
 			use_imm8 = 1;
+			effective_d = 'X;
 			need_pre_stage = (cccc == `CC_CALL);
 			//plus_pc_words = 2'd1;
 		end
@@ -354,8 +362,8 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 					addr_reg1 = `REG_INDEX_SP;
 					addr_src_sext2 = 1;
 					autoincdec = 1;
-					// TODO: Do pop for ALU instructions that read, and shift instructions
-					autoincdec_update = (cls == CLASS_MOV); // Turn off actual update for RMW operations, and set autoincdec_dir=0
+					// Turn off actual update sp for RMW operations, and set autoincdec_dir=0. This makes us just operate on [sp].
+					autoincdec_update = (cls == CLASS_MOV) || !effective_d;
 					autoincdec_dir = effective_d && autoincdec_update; // TODO correct?
 				end else if (arg2_enc[2:1] == 3) begin
 					// sp
@@ -393,8 +401,6 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
 	wire update_other_flags = (cls == CLASS_ALU /*|| cls == CLASS_SHIFT || cls == CLASS_INCDECZERO*/);
 	wire update_carry_flags = ((cls == CLASS_ALU && (cmp || !binop[`OP_BIT_NADD])) /*|| cls == CLASS_SHIFT || cls == CLASS_INCDECZERO*/);
-
-	wire effective_d = d && !use_imm8 && !cmptest;
 
 	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : ((use_rotate || use_mul) ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus_n) ? `DEST_MEM : `DEST_REG ));
 	wire [`SRC_BITS-1:0] src = arg2_src;

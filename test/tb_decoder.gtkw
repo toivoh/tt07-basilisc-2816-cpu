@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Sun May 26 05:05:16 2024
+[*] Sun May 26 07:18:37 2024
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.vcd"
-[dumpfile_mtime] "Sun May 26 04:40:23 2024"
-[dumpfile_size] 14277976
+[dumpfile_mtime] "Sun May 26 07:16:06 2024"
+[dumpfile_size] 14639147
 [savefile] "/home/toivo/code/tinytapeout/tt07-basilisc-2816-cpu/test/tb_decoder.gtkw"
-[timestart] 0
+[timestart] 2530370000
 [size] 2988 1359
 [pos] -1 -1
-*-23.000000 58000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-23.000000 2597890000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb_decoder.
 [treeopen] tb_decoder.dec.
 [treeopen] tb_decoder.dec.sched.
@@ -45,6 +45,10 @@ tb_decoder.r4[7:0]
 tb_decoder.r5[7:0]
 tb_decoder.r6[7:0]
 tb_decoder.r7[7:0]
+@200
+-
+@22
+tb_decoder.sp[7:0]
 @200
 -
 @28
@@ -107,6 +111,15 @@ tb_decoder.dec.invert_src2
 @28
 tb_decoder.dec.cls[2:0]
 @200
+-
+@29
+tb_decoder.dec.effective_d
+@28
+tb_decoder.dec.autoincdec
+tb_decoder.dec.autoincdec_dir
+tb_decoder.dec.autoincdec_update
+@200
+-
 -Scheduler
 @28
 tb_decoder.dec.sched.need_addr
@@ -183,7 +196,6 @@ tb_decoder.dec.sched.alu.arg2_si[1:0]
 @28
 tb_decoder.dec.sched.alu.do_mul
 @22
-tb_decoder.dec.sched.alu.partial[7:0]
 tb_decoder.dec.sched.alu.p_factor[7:0]
 @28
 tb_decoder.dec.sched.alu.s_factor_in[1:0]
@@ -192,12 +204,8 @@ tb_decoder.dec.sched.alu.s_factor_1[2:0]
 tb_decoder.dec.sched.alu.s_factor_code[1:0]
 tb_decoder.dec.sched.alu.minus1
 tb_decoder.dec.sched.alu.next_carry_mul
-@22
-tb_decoder.dec.sched.alu.term[9:0]
-tb_decoder.dec.sched.alu.mul_sum[9:0]
-@28
 tb_decoder.dec.sched.alu.mul_result[1:0]
-@23
+@22
 tb_decoder.dec.sched.alu.next_imm_top_data[7:0]
 @200
 -
