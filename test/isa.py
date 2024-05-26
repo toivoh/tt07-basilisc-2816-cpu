@@ -14,7 +14,7 @@ REG_BITS_MASK = (1 << REG_BITS) - 1
 PAIR_BITS_MASK = (1 << PAIR_BITS) - 1
 NREGS = 1 << LOG2_NR
 
-REG_INDEX_SP_GR = 6
+REG_INDEX_MUL_MSB_DEST = 7
 
 
 def sext(value, pair=False):
@@ -874,11 +874,16 @@ class Mul(Instruction):
 
 		result = arg1 * arg2
 
-		result = result & bitmask(self.wide)
+		#result = result & bitmask(self.wide)
 
 		print("mul(", self.wide, ", ", str(self.arg1), ":", hex(arg1), ", ", str(self.arg2), ":", hex(arg2), ") =", hex(result))
 
 		state.set_dest(self.arg1.get_dest(state), result)
+		reg1 = self.arg1.get_reg()
+		regmask = 6 if self.wide else 7
+		if not (reg1 & regmask == REG_INDEX_MUL_MSB_DEST & regmask):
+			state.set_reg(REG_INDEX_MUL_MSB_DEST, result >> nbits(self.wide))
+
 		state.step_pc(1 + self.arg2.get_extra_words())
 
 	def encode(self):

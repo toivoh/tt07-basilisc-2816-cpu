@@ -34,7 +34,7 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 		output wire set_imm_top,
 		output wire [REG_BITS-1:0] next_imm_top_data,
 
-		input wire do_mul,
+		input wire do_mul, continue_mul, zero_mul_input,
 `endif
 
 		output wire active, // When high, data in shifted on data_in and data_out (if used by the operation)
@@ -250,11 +250,11 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 `ifdef USE_MULTIPLIER
 	localparam MUL_SUM_BITS = REG_BITS + NSHIFT + 1;
 
-	wire first_mul_cycle = (state == 0); // TODO: don't set in mul stage 2
+	wire first_mul_cycle = (state == 0) && !continue_mul;
 
 	wire signed [MUL_SUM_BITS-1:0] partial = first_mul_cycle ? '0 : {{(NSHIFT+1){sign2}}, imm_full[REG_BITS*2-1:REG_BITS]};
 	wire [REG_BITS-1:0] p_factor  = imm_full[REG_BITS-1:0];
-	wire [NSHIFT-1:0] s_factor_in = scan_out;
+	wire [NSHIFT-1:0] s_factor_in = zero_mul_input ? '0 : scan_out;
 
 	wire mul_carry_in = first_mul_cycle ? 0 : carry;
 	wire [NSHIFT+1-1:0] s_factor_1 = s_factor_in + mul_carry_in;

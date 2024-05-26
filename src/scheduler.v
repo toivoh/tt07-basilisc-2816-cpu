@@ -61,7 +61,7 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		output wire set_imm_top,
 		output wire [REG_BITS-1:0] next_imm_top_data,
 
-		input wire use_mul, mul_only,
+		input wire use_mul, mul_only, extended_mul,
 `endif
 
 		output wire addr_stage, data_stage,
@@ -218,7 +218,7 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	assign data_stage = !_any_rotate_stage && !addr_stage;
 
 	//assign inst_done = (op_done && (use_rotate ? rotate_stage : data_stage)) || (skip && !wait_for_imm16);
-	assign inst_done = (op_done && (use_rotate ? _rotate_stage : (use_mul ? _ror1_stage : data_stage))) || (skip && !wait_for_imm16);
+	assign inst_done = (op_done && (_rotate_stage || (use_mul && !extended_mul && _ror1_stage) || (!use_rot_or_mul && data_stage))) || (skip && !wait_for_imm16);
 
 	// rotate_count = 0 for a shift is always a no-op
 	assign no_op = (rotate_count[ROTATE_COUNT_BITS-1:1] == '0) && (rotate_stage || (any_rotate_stage && rotate_count[0] == 0));
@@ -292,14 +292,15 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	// Invoke ALU
 	// ----------
 	wire [`OP_BITS-1:0] operation = addr_stage ? (addr_op == `ADDR_OP_MOV ? `OP_MOV : `OP_ADD) : op;
-	wire pair_op  = addr_stage ? 1'b1       : (data_stage && use_rot_or_mul ? 1'b0 : wide);
-	wire pair_op2 = addr_stage ? addr_wide2 : (data_stage && use_rot_or_mul ? 1'b0 : wide2);
+	wire force_narrow = (data_stage && use_rot_or_mul) || mul2_stage;
+	wire pair_op  = addr_stage ? 1'b1       : (force_narrow ? 1'b0 : wide);
+	wire pair_op2 = addr_stage ? addr_wide2 : (force_narrow ? 1'b0 : wide2);
 	wire sext2 = addr_stage ? addr_src_sext2 : src_sext2;
 	wire external_arg2 = curr_src_imm | (curr_src == `SRC_MEM);
-	wire [LOG2_NR-1:0] reg1 = addr_stage ? addr_reg1 : reg_dest;
+	wire [LOG2_NR-1:0] reg1 = addr_stage ? addr_reg1 : (mul2_stage ? `REG_INDEX_MUL_MSB_DEST : reg_dest);
 	wire [LOG2_NR-1:0] reg2 = addr_stage ? reg_addr_src : reg_src;
 	wire [NSHIFT-1:0] data_in = curr_src_imm ? imm_data_in : rx_pins; // Must wait for rx_pins to contain the right data
-	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && ((dest == `DEST_REG) || do_swap) && update_dest) || mul1_stage;
+	wire update_reg1 = (addr_stage && autoincdec) || (data_stage && ((dest == `DEST_REG) || do_swap) && update_dest) || any_mul_stage;
 	wire reverse_args = data_stage && ((dest == `DEST_MEM) && !curr_src_imm) || force_reverse_args; // Can we have an immediate source and a memory destination at the same time?
 
 	// Should we double r8 in [r16 + r8] for 16 bit wide operations?
@@ -325,6 +326,8 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 
 `ifdef USE_MULTIPLIER
 	wire do_mul = any_mul_stage;
+	wire continue_mul = mul2_stage;
+	wire zero_mul_input = mul2_stage;
 `endif
 
 	ALU #( .LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) alu (
@@ -341,7 +344,7 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		.imm_full(imm_full),
 `ifdef USE_MULTIPLIER
 		.set_imm_top(set_imm_top), .next_imm_top_data(next_imm_top_data),
-		.do_mul(do_mul),
+		.do_mul(do_mul), .continue_mul(continue_mul), .zero_mul_input(zero_mul_input),
 `endif
 		.flag_c(flag_c), .flag_v(flag_v), .flag_s(flag_s), .flag_z(flag_z),
 		.active(active), .data_in1(src1_zero ? '0 : pc_data_in), .data_in2(data_in), .data_out(data_out),
