@@ -440,12 +440,11 @@ async def test_cpu(dut):
 			elif opnum == BinopNum.MOV and randbool(): # mov r, imm8 -- choose imm8 more often since it covers more of the encoding space
 				arg1, arg2 = rand_arg_reg(wide), rand_arg_imm8(wide)
 			else:
-				if randbool() or no_d: arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True)
+				if randbool() or no_d: arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True, d_symmetry = not no_d)
 				else:                  arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
 
 			# Avoid unsupported combinations
-			if (opnum == BinopNum.CMP) and isinstance(arg2, ArgZextReg): opnum = BinopNum.TEST
-			elif (opnum == BinopNum.TEST) and isinstance(arg2, (ArgSextReg, ArgImm6)): opnum = BinopNum.CMP
+			if (opnum == BinopNum.TEST) and isinstance(arg2, ArgImm6): opnum = BinopNum.CMP
 
 			inst = Binop(opnum, arg1, arg2)
 

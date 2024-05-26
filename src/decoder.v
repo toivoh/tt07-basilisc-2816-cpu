@@ -343,7 +343,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				// 000rr0	r16
 				arg2_src = `SRC_REG;
 				wide2 = !arg2_enc[3];
-				src_sext2 = !d; // d selects sext or zext
+				src_sext2 = !d || cmptest; // d selects sext or zext
 				arg2_pure_reg = !wide || !arg2_enc[3];
 			end else begin
 				// 000xy1

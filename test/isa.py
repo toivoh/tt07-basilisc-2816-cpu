@@ -578,7 +578,6 @@ class Binop(Instruction):
 		elif self.binop == BinopNum.TEST:    result = arg1 & arg2; update_dest = False
 		elif self.binop == BinopNum.OR:      result = arg1 | arg2
 		elif self.binop == BinopNum.XOR:     result = arg1 ^ arg2
-		elif self.binop == BinopNum.TEST:    result = arg1 # No change
 		elif self.binop == BinopNum.MOV:     result = arg2
 		elif self.binop == BinopNum.AND_NOT: result = arg1 & (~arg2 & bitmask(self.wide))
 		elif self.binop == BinopNum.OR_NOT:  result = arg1 | (~arg2 & bitmask(self.wide))
@@ -660,8 +659,11 @@ class Binop(Instruction):
 				assert not force_d
 				force_no_d = True
 			elif binop == BinopNum.TEST:
+				assert not isinstance(arg2, ArgImm6) # not supported
+				assert not isinstance(arg2, ArgZextReg) # not supported
 				assert not d
-				assert not force_no_d
+				assert (not force_no_d) or isinstance(arg2, ArgSextReg)
+				force_no_d = False
 				force_d = True
 				binop = BinopNum.CMP
 
