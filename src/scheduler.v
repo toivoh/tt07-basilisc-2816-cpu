@@ -39,7 +39,7 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 		input wire addr_src_sext2,
 		input wire autoincdec, addr_just_reg1,
 
-		input wire update_carry_flags, update_other_flags,
+		input wire update_carry_flags, update_other_flags, no_flag_updates,
 
 		input wire use_cc,
 		input wire [`CC_BITS-1:0] cc,
@@ -230,7 +230,7 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	wire write_pc = data_stage && (dest == `DEST_PC);
 	wire access_pc = read_pc || write_pc;
 
-	wire block_flag_updates = !data_stage || (dest == `DEST_PC) || use_rotate; // TODO: might update flags during the rotate stage
+	wire block_flag_updates = !data_stage || (dest == `DEST_PC) || use_rot_or_mul || no_flag_updates; // TODO: might update flags during the rotate stage
 
 	wire send_read = addr_stage || (data_stage && write_pc); // When write_pc is high, we do the first prefetch at the same time as writing PC
 	wire will_write = (dest == `DEST_MEM);

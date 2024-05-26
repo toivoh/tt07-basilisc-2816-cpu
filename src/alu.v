@@ -165,6 +165,8 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	end
 
 
+	wire write_flags = (reg1 == `REG_INDEX_FLAGS) && update_reg1 && do_scan;
+
 
 	wire [NSHIFT-1:0] scan_in_regular = update_reg1 ? (do_swap_mem ? data_in2 : result) : scan_out;
 
@@ -208,12 +210,17 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 			flag_s <= 0;
 			flag_z <= 0;
 		end else if (active) begin
-			if (update_carry_flags) begin
+			if (write_flags && state[1:0] == 1) begin
+				{flag_c, flag_v} <= flags_data_scan_in;
+			end else if (update_carry_flags && last_op_cycle) begin
 				flag_c <= next_carry;
 				flag_v <= next_scarry;
 			end
-			if (update_other_flags) begin
-				flag_s <= result[NSHIFT-1];
+
+			if (write_flags && state[1:0] == 0) begin
+				{flag_s, flag_z} <= flags_data_scan_in;
+			end else if (update_other_flags) begin
+				if (last_op_cycle) flag_s <= result[NSHIFT-1];
 				flag_z <= (result == '0) && (flag_z || (state == 0));
 			end
 		end
@@ -230,10 +237,14 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	);
 */
 
+	wire [REG_BITS-1:0] flags = {flag_c, flag_v, flag_s, flag_z}; // flag_z must be in the bottom so that it can be read before it gets updated
+	wire [NSHIFT-1:0] flags_data_scan_in;
+
 	regfile_top #(.LOG2_NR(LOG2_NR), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT)) registers(
 		.clk(clk), .reset(reset),
 		.bit_index(state),
 		.reg_index(reg_index), .reg_index2(reg_index2),
+		.flags(flags), .flags_data_scan_in(flags_data_scan_in), //.write_flags(_write_flags),
 		.do_scan(do_scan), .do_scan2(do_scan2),
 		.scan_in(scan_in), .scan_in2(scan_in2),
 		.scan_out(scan_out), .scan_out2(scan_out2)

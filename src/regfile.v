@@ -89,6 +89,10 @@ module regfile_top #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2 ) (
 
 		input wire [LOG2_NR-1:0] reg_index, reg_index2,
 
+		input wire [REG_BITS-1:0] flags,
+		//output wire write_flags,
+		output wire [NSHIFT-1:0] flags_data_scan_in,
+
 		input wire do_scan, do_scan2,
 		// If both indices are the same and scanning, scan_in is used over scan_in2
 		input wire [NSHIFT-1:0] scan_in, scan_in2,
@@ -127,7 +131,7 @@ module regfile_top #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2 ) (
 
 	// Stack pointer sp
 	// ----------------
-	wire sp_match    = (reg_index_sr[0] == 0);
+	wire sp_match    = (reg_index_sr[1:0] == 0);
 	wire sp_do_scan  = sr_do_scan && sp_match;
 
 	wire [NSHIFT-1:0] sp_scan_out;
@@ -141,8 +145,27 @@ module regfile_top #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2 ) (
 	// Stack pointer top
 	wire [NSHIFT-1:0] sp_top_scan_out = (bit_index[$clog2(REG_BITS/NSHIFT)-1:0] == 0) ? 2'd1 : '0;
 
+	// Flags register
+	wire flags_match = (reg_index_sr[1] == 1); // Matches on both 2 and 3
+	//assign write_flags = flags_match && sr_do_scan;
+	assign flags_data_scan_in = sr_scan_in;
+
 	// Special output mux
-	wire [NSHIFT-1:0] sr_scan_out = sp_match ? sp_scan_out : sp_top_scan_out;
+	//wire [NSHIFT-1:0] sr_scan_out = sp_match ? sp_scan_out : sp_top_scan_out;
+	reg [NSHIFT-1:0] sr_scan_out;
+	always @(*) begin
+		sr_scan_out = 'X;
+		case (reg_index_sr[1:0])
+			0: sr_scan_out = sp_scan_out;
+			1: sr_scan_out = sp_top_scan_out;
+			2, 3: begin
+				if      (bit_index[1:0] == 0) sr_scan_out = flags[1:0];
+				else if (bit_index[1:0] == 1) sr_scan_out = flags[3:2];
+				else sr_scan_out = 0; // Matches on both 2 and 3
+			end
+		endcase
+	end
+
 	wire [NSHIFT-1:0] sr_scan_out2 = sr_scan_out;
 
 	// Output mux

@@ -287,6 +287,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	reg addr_src_sext2;
 	reg arg2_pure_reg;
 	reg [LOG2_NR-1:0] arg2_reg;
+	reg no_flag_updates;
 	always @(*) begin
 		arg2_src = 'X;
 		addr_reg1 = 'X;
@@ -301,6 +302,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		addr_src_sext2 = 0;
 		arg2_pure_reg = 0;
 		arg2_reg = arg2_enc[2:0];
+		no_flag_updates = 0;
 
 		if (use_imm8 && !push_pc_plus_n) begin
 			arg2_src = `SRC_IMM8;
@@ -338,13 +340,21 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 				addr_reg1 = {arg2_enc[3:2], 1'b0};
 				addr_src = `SRC_IMM2;
 			end else if (arg2_enc[3] == 1 || (arg2_enc[0] == 0)) begin
-//			end else begin
-				// 001rrr	r8
-				// 000rr0	r16
 				arg2_src = `SRC_REG;
-				wide2 = !arg2_enc[3];
-				src_sext2 = !d || cmptest; // d selects sext or zext
-				arg2_pure_reg = !wide || !arg2_enc[3];
+				if (!wide && arg2_enc[3] == 0) begin
+					// 000rr0 special register when wide=0
+					// 000000 sp (duplicate)
+					// 000010 flags
+					//arg2_reg = `REG_INDEX_FLAGS;
+					arg2_reg[LOG2_NR-1] = 1; // allows access to even numbered special registers
+					no_flag_updates = effective_d; // block flag updates when writing, at least when writing flags
+				end else begin
+					// 001rrr	r8
+					// 000rr0	r16 when wide=1
+					wide2 = !arg2_enc[3];
+					src_sext2 = !d || cmptest; // d selects sext or zext
+					arg2_pure_reg = !wide || !arg2_enc[3];
+				end
 			end else begin
 				// 000xy1
 				if (arg2_enc[2:1] == 0) begin
@@ -456,7 +466,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		.addr_src_sext2(addr_src_sext2), .update_dest(update_dest),
 		.force_reverse_args(force_reverse_args), .invert_src2(invert_src2),
 		.autoincdec(autoincdec_update), .addr_just_reg1(addr_just_reg1),
-		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags),
+		.update_carry_flags(update_carry_flags), .update_other_flags(update_other_flags), .no_flag_updates(no_flag_updates),
 		.use_cc(use_cc), .cc(cc),
 		.use_rotate(use_rotate), .rotate_only(rotate_only), .use_shr(use_shr), .use_sar(use_sar), .use_shl(use_shl), .rotate_count(rotate_count),
 		.do_swap(do_swap),

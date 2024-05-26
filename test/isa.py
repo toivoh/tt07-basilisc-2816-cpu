@@ -76,14 +76,23 @@ class State:
 
 	def set_sp(self, value): self.sp = value & 0xff
 
+	def get_flags(self): return self.flag_z | (self.flag_s << 1) | (self.flag_v << 2) | (self.flag_c << 3)
+	def set_flags(self, value):
+		self.flag_z = (value & 1) != 0
+		self.flag_s = (value & 2) != 0
+		self.flag_v = (value & 4) != 0
+		self.flag_c = (value & 8) != 0
+
 	def set_dest(self, dest, value):
 		value &= bitmask(dest.wide)
 		if isinstance(dest, ArgReg):
 			self.set_reg(dest.get_reg(), value, dest.wide)
-		elif isinstance(dest, ArgRegSP):
-			self.set_sp(value)
 		elif isinstance(dest, ArgMem):
 			self.ram_emu.write_mem(dest.get_addr(self), value, dest.wide)
+		elif isinstance(dest, ArgRegSP):
+			self.set_sp(value)
+		elif isinstance(dest, ArgRegFlags):
+			self.set_flags(value)
 		else:
 			raise TypeError("Unsupported dest type: ", type(dest))
 
@@ -96,6 +105,10 @@ class State:
 		for i in range(NREGS): g_regs[i].value = self.regs[i]
 		sp_reg.value = self.sp
 
+		alu.flag_c.value = self.flag_c
+		alu.flag_v.value = self.flag_v
+		alu.flag_s.value = self.flag_s
+		alu.flag_z.value = self.flag_z
 
 
 def nbits(pair): return PAIR_BITS if pair else REG_BITS
@@ -408,6 +421,23 @@ class ArgRegSP(Arg):
 		return f"ArgRegSP()"
 
 
+class ArgRegFlags(Arg):
+	"""sp"""
+	def __init__(self):
+		super().__init__(False)
+
+	def get_value(self, state=None):
+		return state.get_flags()
+
+	def encode(self, is_dest=False, T=None, extra_dest=None):
+		assert not self.wide
+		# 000010 flags when wide=0
+		return 2
+
+	def __str__(self):
+		return f"ArgRegFlags()"
+
+
 class ArgImm(Arg):
 	"""immediate"""
 	def __init__(self, wide, value):
@@ -585,13 +615,14 @@ class Binop(Instruction):
 		elif self.binop == BinopNum.MOV_NOT: result = (~arg2 & bitmask(self.wide))
 		else: raise ValueError("Unsupported binop value: ", self.binop)
 
-		if self.binop not in (BinopNum.MOV, BinopNum.MOV_NOT):
-			state.flag_z = (result & bitmask(self.wide)) == 0
-			state.flag_s = ((result >> (8*(1+self.wide)-1)) & 1) != 0
+		if not isinstance(self.arg1, ArgRegFlags):
+			if self.binop not in (BinopNum.MOV, BinopNum.MOV_NOT):
+				state.flag_z = (result & bitmask(self.wide)) == 0
+				state.flag_s = ((result >> (8*(1+self.wide)-1)) & 1) != 0
 
-		if self.binop in (BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.CMP, BinopNum.REVSUB, BinopNum.REVSBC):
-			state.flag_c = ((result >> (8*(1+self.wide))) & 1) != 0
-			# TODO; model flag_v
+			if self.binop in (BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.CMP, BinopNum.REVSUB, BinopNum.REVSBC):
+				state.flag_c = ((result >> (8*(1+self.wide))) & 1) != 0
+				# TODO; model flag_v
 
 		#print("binop(", self.wide, ", ", self.binop, ", ", hex(arg1), ", ", hex(arg2), ") =", hex(result))
 		print("binop(", self.wide, ", ", self.binop, ", ", str(self.arg1), ":", hex(arg1), ", ", str(self.arg2), ":", hex(arg2), ") =", hex(result))
@@ -771,6 +802,7 @@ class Shift(Instruction):
 		assert isinstance(arg2, Arg)
 		self.wide = arg1.wide
 		assert not arg2.wide
+		assert not (self.wide and isinstance(arg2, ArgRegFlags)) # not supported, decodes wrong
 
 		super().__init__()
 		self.shiftop = shiftop
@@ -859,6 +891,7 @@ class Mul(Instruction):
 		assert isinstance(arg2, Arg)
 		self.wide = arg1.wide
 		assert not arg2.wide
+		assert not (self.wide and isinstance(arg2, ArgRegFlags)) # not supported, decodes wrong
 
 		super().__init__()
 		self.arg1 = arg1
@@ -1075,12 +1108,14 @@ def rand_arg_imm16(wide):
 	return ArgImm16(wide, randrange(0, 0x100 << (wide*8)))
 
 
-def rand_arg(wide, is_src=False, d_symmetry=True, zp_ok=True):
+def rand_arg(wide, is_src=False, d_symmetry=True, zp_ok=True, flags_ok=False):
 	if False:
 		n = randrange(1 + is_src)
 		if n == 0: return rand_arg_mem_imm16(wide)
 		elif n == 1: return rand_arg_imm16(wide)
 		else: assert False
+
+	if flags_ok and not wide and randrange(10) == 0: return ArgRegFlags()
 
 	n = (not zp_ok) + randrange(7+zp_ok+is_src+(1+d_symmetry)*(is_src and wide))
 	if   n == 0: return rand_arg_mem_zp(wide)

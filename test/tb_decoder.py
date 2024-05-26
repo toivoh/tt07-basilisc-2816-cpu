@@ -53,6 +53,7 @@ async def test_decoder(dut):
 			# Fresh random state. TODO: Don't reinitialize everything?
 			for i in range(0, NREGS, 2): state.set_reg(i, randrange(0x10000), True)
 			state.set_sp(randrange(0x100))
+			state.set_flags(randrange(0x100))
 			state.apply(alu)
 
 			#inst = Binop(BinopNum.SUB, ArgReg(False, 5), ArgReg(False, 4))
@@ -70,7 +71,7 @@ async def test_decoder(dut):
 					arg2 = ArgImm6(False, randrange(8 if shiftop == ShiftopNum.SHL and not wide else 16))
 					#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR]) # ROL is not supported for immediate; can just use ROR instead
 				else:
-					arg2 = rand_arg(False, is_src=True, zp_ok=False)
+					arg2 = rand_arg(False, is_src=True, zp_ok=False, flags_ok=not wide)
 					#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
 				inst = Shift(shiftop, rand_arg_reg(wide), arg2)
 			elif rnd == 3:
@@ -78,7 +79,7 @@ async def test_decoder(dut):
 				inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
 			elif rnd == 4:
 				if randbool(): arg2 = rand_arg_imm6(False)
-				else:          arg2 = rand_arg(False, is_src=True, zp_ok=False)
+				else:          arg2 = rand_arg(False, is_src=True, zp_ok=False, flags_ok=not wide)
 				inst = Mul(ArgReg(wide, randrange(2, 8) & (6 if wide else 7)), arg2)
 			else:
 				opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.TEST, BinopNum.MOV])
@@ -88,8 +89,8 @@ async def test_decoder(dut):
 				elif opnum == BinopNum.MOV and randbool(): # mov r, imm8 -- choose imm8 more often since it covers more of the encoding space
 					arg1, arg2 = rand_arg_reg(wide), rand_arg_imm8(wide)
 				else:
-					if randbool() or no_d: arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True, d_symmetry = not no_d)
-					else:                  arg2, arg1 = rand_arg_reg(wide), rand_arg(wide)
+					if randbool() or no_d: arg1, arg2 = rand_arg_reg(wide), rand_arg(wide, is_src=True, d_symmetry = not no_d, flags_ok=True)
+					else:                  arg2, arg1 = rand_arg_reg(wide), rand_arg(wide, flags_ok=True)
 
 				# Avoid unsupported combinations
 				if (opnum == BinopNum.TEST) and isinstance(arg2, ArgImm6): opnum = BinopNum.CMP
