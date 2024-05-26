@@ -216,7 +216,8 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 						// Use all this encoding space for mul r, imm7 for now. Regs 0 and 1 are taken by the jump/call instructions above.
 						cls = CLASS_MUL;
 						use_mul = 1;
-						use_imm8 = 1;
+						use_imm8 = (z == 0);
+						use_zp = 0;
 `endif
 					end
 				end
@@ -395,7 +396,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire effective_d = d && !use_imm8 && !cmptest;
 
-	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : (use_rotate ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus_n) ? `DEST_MEM : `DEST_REG ));
+	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : ((use_rotate || use_mul) ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus_n) ? `DEST_MEM : `DEST_REG ));
 	wire [`SRC_BITS-1:0] src = arg2_src;
 	// swap_arg1_arg2 is only high when both args are registers
 	wire swap_arg1_arg2 = special_reg2 && (effective_d && (cls != CLASS_SHIFT) && (cls != CLASS_MUL));
@@ -429,12 +430,12 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	wire src1_zero = use_rol;
 
-	assign feed_imm8 = (cls == CLASS_SHIFT) && data_stage;
+	assign feed_imm8 = (cls == CLASS_SHIFT || use_mul) && data_stage;
 
 	wire do_swap = (cls == CLASS_SWAP);
 
 `ifdef USE_MULTIPLIER
-	wire mul_only = use_mul;
+	wire mul_only = use_mul && use_imm8;
 `endif
 
 	scheduler #( .LOG2_NR(4), .REG_BITS(REG_BITS), .NSHIFT(NSHIFT), .PAYLOAD_CYCLES(PAYLOAD_CYCLES) ) sched(

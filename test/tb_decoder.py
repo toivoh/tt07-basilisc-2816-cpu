@@ -77,7 +77,9 @@ async def test_decoder(dut):
 				opnum = choice([BinopNum.REVSUB, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
 				inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
 			elif rnd == 4:
-				inst = Mul(ArgReg(wide, randrange(2, 8) & (6 if wide else 7)), rand_arg_imm6(False))
+				if randbool(): arg2 = rand_arg_imm6(False)
+				else:          arg2 = rand_arg(False, is_src=True, zp_ok=False)
+				inst = Mul(ArgReg(wide, randrange(2, 8) & (6 if wide else 7)), arg2)
 			else:
 				opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.TEST, BinopNum.MOV])
 				no_d = opnum in (BinopNum.CMP, BinopNum.TEST)

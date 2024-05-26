@@ -851,7 +851,7 @@ class Shift(Instruction):
 class Mul(Instruction):
 	def __init__(self, arg1, arg2):
 		assert isinstance(arg1, ArgReg)
-		assert isinstance(arg2, ArgImm6)
+		assert isinstance(arg2, Arg)
 		self.wide = arg1.wide
 		assert not arg2.wide
 
@@ -885,13 +885,13 @@ class Mul(Instruction):
 		reg1 = self.arg1.get_reg()
 		extra = []
 
-		if isinstance(self.arg2, ArgImm6):
-			assert (reg1&6) != 0 # currently not supported
+		assert (reg1&6) != 0 # currently not supported
 
+		if isinstance(self.arg2, ArgImm6):
 			# 111111
 			# 5432109876543210
-			# 001g00rr0ziiiiii	mul r8,  imm7
-			# 000100rr0ziiiiii	mul r16, imm7
+			# 001g00rr00iiiiii	mul r8,  imm6
+			# 000100rr00iiiiii	mul r16, imm6
 			prefix = 1 if self.wide else 2 | (reg1&1)
 			m, d, z = 0, 0, 0
 			o = 0
@@ -902,7 +902,20 @@ class Mul(Instruction):
 			return [enc] + extra
 
 		else:
-			assert False # not supported
+			# 111111
+			# 5432109876543210
+			# 001g00rr01iiiiii	mul r8,  src8
+			# 0010010000000110
+			# 000100rr01iiiiii	mul r16, src8
+			prefix = 1 if self.wide else 2 | (reg1&1)
+			m, d, z = 0, 0, 1
+			o = 0
+
+			arg2_enc = self.arg2.encode(extra_dest=extra)
+
+			enc = (prefix << 12) | (o << 11) | (m << 10) | (((reg1&6)|d) << 7) | (z << 6) | arg2_enc
+			print("Mul: enc = ", enc)
+			return [enc] + extra
 
 
 class Jump(Instruction):
