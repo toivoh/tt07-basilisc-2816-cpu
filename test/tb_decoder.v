@@ -21,6 +21,12 @@ module tb_decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2 ) ();
 	wire reset = !rst_n;
 
 
+`ifdef USE_MULTIPLIER
+	localparam MUL_SUPPORTED = 1;
+`else
+	localparam MUL_SUPPORTED = 0;
+`endif
+
 
 	reg inst_valid = 0;
 

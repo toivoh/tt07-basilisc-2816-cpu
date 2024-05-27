@@ -60,6 +60,12 @@ module tb ();
 	wire [REG_BITS-1:0] sp = top.cpu.dec.sched.alu.registers.sp_register.regs;
 `endif
 
+`ifdef USE_MULTIPLIER
+	localparam MUL_SUPPORTED = 1;
+`else
+	localparam MUL_SUPPORTED = 0;
+`endif
+
 	localparam CC_ALWAYS = `CC_ALWAYS;
 	localparam CC_Z = `CC_Z;
 	localparam CC_NZ = `CC_NZ;

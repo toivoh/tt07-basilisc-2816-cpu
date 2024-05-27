@@ -253,6 +253,8 @@ async def test_cpu(dut):
 
 		#for i in range(NREGS): regs[i].value = i**2
 
+	mul_supported = dut.MUL_SUPPORTED.value != 0
+
 	# reset
 	dut._log.info("reset")
 	dut.rst_n.value = 0
@@ -436,7 +438,7 @@ async def test_cpu(dut):
 		elif rnd == 4:
 			opnum = choice([BinopNum.MOV_NEG, BinopNum.REVSUB, BinopNum.MOV_NEGC, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
 			inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
-		elif rnd == 5:
+		elif mul_supported and rnd == 5:
 			inst = Mul(ArgReg(wide, randrange(2, 8) & (6 if wide else 7)), rand_arg_imm6(False))
 		else:
 			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.TEST, BinopNum.MOV])

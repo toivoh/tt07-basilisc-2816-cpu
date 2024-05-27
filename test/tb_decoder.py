@@ -38,6 +38,8 @@ async def test_decoder(dut):
 	await ClockCycles(dut.clk, 10)
 	dut.rst_n.value = 1
 
+	mul_supported = dut.MUL_SUPPORTED.value != 0
+
 	if preserved:
 
 		state = State()
@@ -77,7 +79,7 @@ async def test_decoder(dut):
 			elif rnd == 3:
 				opnum = choice([BinopNum.MOV_NEG, BinopNum.REVSUB, BinopNum.MOV_NEGC, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
 				inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
-			elif rnd == 4:
+			elif mul_supported and rnd == 4:
 				if randbool(): arg2 = rand_arg_imm6(False)
 				else:          arg2 = rand_arg(False, is_src=True, zp_ok=False, flags_ok=not wide)
 				inst = Mul(ArgReg(wide, randrange(2, 8) & (6 if wide else 7)), arg2)

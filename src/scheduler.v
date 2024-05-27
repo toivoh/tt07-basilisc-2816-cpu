@@ -102,6 +102,7 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 `ifndef USE_MULTIPLIER
 	wire use_mul = 0;
 	wire mul_only = 0;
+	wire extended_mul = 0;
 `endif
 
 	wire use_rot_or_mul = use_rotate || use_mul;
@@ -212,6 +213,10 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	assign any_rotate_stage = _any_rotate_stage;
 	assign ror1_stage = _ror1_stage;
 	wire rotate_stage = _rotate_stage;
+
+	wire any_mul_stage = 0;
+	wire mul1_stage    = 0;
+	wire mul2_stage    = 0;
 `endif
 
 
