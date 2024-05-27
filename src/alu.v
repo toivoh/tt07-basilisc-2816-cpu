@@ -264,7 +264,7 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 	wire first_mul_cycle = (state == 0) && !continue_mul;
 
-	wire signed [MUL_SUM_BITS-1:0] partial = first_mul_cycle ? '0 : {{(NSHIFT+1){sign2}}, imm_full[REG_BITS*2-1:REG_BITS]};
+	wire [MUL_SUM_BITS-1:0] partial = first_mul_cycle ? '0 : {{(NSHIFT+1){sign2}}, imm_full[REG_BITS*2-1:REG_BITS]};
 	wire [REG_BITS-1:0] p_factor  = imm_full[REG_BITS-1:0];
 	wire [NSHIFT-1:0] s_factor_in = zero_mul_input ? '0 : scan_out;
 
