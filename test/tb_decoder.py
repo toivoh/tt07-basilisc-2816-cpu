@@ -75,7 +75,7 @@ async def test_decoder(dut):
 					#shiftop = choice([ShiftopNum.ROR, ShiftopNum.SAR, ShiftopNum.SHR, ShiftopNum.ROL])
 				inst = Shift(shiftop, rand_arg_reg(wide), arg2)
 			elif rnd == 3:
-				opnum = choice([BinopNum.REVSUB, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
+				opnum = choice([BinopNum.MOV_NEG, BinopNum.REVSUB, BinopNum.MOV_NEGC, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
 				inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
 			elif rnd == 4:
 				if randbool(): arg2 = rand_arg_imm6(False)

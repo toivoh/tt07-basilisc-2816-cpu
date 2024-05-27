@@ -135,11 +135,12 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 
 	assign arg2 = double_arg2 ? {arg2_01[NSHIFT-1-1:0], (state == 0) ? 1'b0 : old_arg2_bit} : arg2_01;
 
+	wire invert_arg2 = do_sub | invert_src2;
+
 	reg carry;
 	//wire carry_in = (state == 0 && block_carry) ? do_sub : carry;
-	wire carry_in = (state == 0) ? (block_carry ? do_sub : flag_c) : carry;
-
-	wire invert_arg2 = do_sub | invert_src2;
+	//wire carry_in = (state == 0) ? (block_carry ? do_sub : flag_c) : carry;
+	wire carry_in = (state == 0) ? (block_carry ? invert_arg2 : flag_c) : carry;
 
 	wire [NSHIFT-1:0] arg1_s = reverse_args ? arg2 : arg1;
 	wire [NSHIFT-1:0] arg2_s = reverse_args ? arg1 : arg2;

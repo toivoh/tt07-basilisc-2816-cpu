@@ -127,14 +127,15 @@ class BinopNum(Enum):
 	TEST = 8
 	MOV  = 9
 
-	ADD_ALT = 16 + 0 # same as rd -= rs - 1 ? -- is there something better to do with it?
-	REVSUB  = 16 + 1
-	ADC_ALT = 16 + 2 # same as sbc ? -- is there something better to do with it?
-	REVSBC  = 16 + 3
-	AND_NOT = 16 + 4
-	OR_NOT  = 16 + 5
-	XOR_NOT = 16 + 6
-	MOV_NOT = 16 + 9
+	MOV_NEG  = 16 + ADD
+	REVSUB   = 16 + SUB
+	MOV_NEGC = 16 + ADC
+	REVSBC   = 16 + SBC
+	AND_NOT  = 16 + AND
+	OR_NOT   = 16 + OR
+	XOR_NOT  = 16 + XOR
+
+	MOV_NOT  = 16 + 9
 
 class ShiftopNum(Enum):
 	ROR = 0
@@ -600,10 +601,12 @@ class Binop(Instruction):
 		if   self.binop == BinopNum.ADD:     result = arg1 + arg2
 		elif self.binop == BinopNum.SUB:     result = arg1 - arg2 + (bitmask(self.wide)+1)
 		elif self.binop == BinopNum.REVSUB:  result = arg2 - arg1 + (bitmask(self.wide)+1)
+		elif self.binop == BinopNum.MOV_NEG: result =      - arg2 + (bitmask(self.wide)+1)
 		elif self.binop == BinopNum.CMP:     result = arg1 - arg2 + (bitmask(self.wide)+1); update_dest = False # same as SUB but don't update dest
 		elif self.binop == BinopNum.ADC:     result = arg1 + arg2 + state.flag_c
 		elif self.binop == BinopNum.SBC:     result = arg1 - arg2 + state.flag_c + bitmask(self.wide)
 		elif self.binop == BinopNum.REVSBC:  result = arg2 - arg1 + state.flag_c + bitmask(self.wide)
+		elif self.binop == BinopNum.MOV_NEGC:result =      - arg2 + state.flag_c + bitmask(self.wide)
 		elif self.binop == BinopNum.AND:     result = arg1 & arg2
 		elif self.binop == BinopNum.TEST:    result = arg1 & arg2; update_dest = False
 		elif self.binop == BinopNum.OR:      result = arg1 | arg2
@@ -620,7 +623,7 @@ class Binop(Instruction):
 				state.flag_z = (result & bitmask(self.wide)) == 0
 				state.flag_s = ((result >> (8*(1+self.wide)-1)) & 1) != 0
 
-			if self.binop in (BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.CMP, BinopNum.REVSUB, BinopNum.REVSBC):
+			if self.binop in (BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.CMP, BinopNum.MOV_NEG, BinopNum.REVSUB, BinopNum.MOV_NEGC, BinopNum.REVSBC):
 				state.flag_c = ((result >> (8*(1+self.wide))) & 1) != 0
 				# TODO; model flag_v
 
@@ -675,9 +678,9 @@ class Binop(Instruction):
 		reg1 = arg1.get_reg()
 
 		binop = self.binop
-		if binop.value >= BinopNum.ADD_ALT.value:
+		if binop.value >= BinopNum.MOV_NEG.value:
 			assert isinstance(self.arg1, ArgReg) and isinstance(self.arg2, ArgReg)
-			binop = BinopNum(binop.value - BinopNum.ADD_ALT.value)
+			binop = BinopNum(binop.value - BinopNum.MOV_NEG.value)
 			assert 0 <= binop.value <= BinopNum.MOV.value
 			assert binop not in (BinopNum.CMP, BinopNum.TEST)
 			force_d = True

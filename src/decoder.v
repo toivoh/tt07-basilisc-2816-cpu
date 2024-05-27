@@ -399,7 +399,10 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire update_dest = !cmptest;
 
 	wire use_alt_op = alt_op_available && !special_reg2 && arg2_pure_reg && d;
-	wire sub_or_sbc = (cls == CLASS_ALU) && (binop == `OP_SUB || binop == `OP_SBC);
+	//wire sub_or_sbc = (cls == CLASS_ALU) && (binop == `OP_SUB || binop == `OP_SBC);
+	wire add_or_sub = (cls == CLASS_ALU && !binop[`OP_BIT_NADD]);
+	wire sub_or_sbc = add_or_sub && (binop[0] == 1);
+	wire add_or_adc = add_or_sub && (binop[0] == 0);
 
 	wire invert_src2 = use_alt_op && !sub_or_sbc;
 	// Replace sub r, imm6 with revsub r, imm6, also use revsub as alternate op for sub
@@ -410,7 +413,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
 	wire update_other_flags = (cls == CLASS_ALU) || use_alt_op;
-	wire update_carry_flags = ((cls == CLASS_ALU && (cmp || !binop[`OP_BIT_NADD])) /*|| cls == CLASS_SHIFT || cls == CLASS_INCDECZERO*/);
+	wire update_carry_flags = (cls == CLASS_ALU && (cmp || !binop[`OP_BIT_NADD]));
 
 	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : ((use_rotate || use_mul) ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus_n) ? `DEST_MEM : `DEST_REG ));
 	wire [`SRC_BITS-1:0] src = arg2_src;
@@ -444,7 +447,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire rcount_msb_mask = !(use_rotate && !wide && !(use_sar || use_shr)); // sar and shr can shift a byte > 7 steps to yield the sign/zero.
 	wire [ROTATE_COUNT_BITS-1:0] rotate_count = {imm_full[ROTATE_COUNT_BITS-1] & rcount_msb_mask, imm_full[ROTATE_COUNT_BITS-1-1:0]};
 
-	wire src1_zero = use_rol;
+	wire src1_zero = use_rol || (use_alt_op && add_or_adc);
 
 	assign feed_imm8 = (cls == CLASS_SHIFT || use_mul) && data_stage;
 

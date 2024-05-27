@@ -434,7 +434,7 @@ async def test_cpu(dut):
 			else: arg2 = rand_arg_mem(wide)
 			inst = Swap(rand_arg_reg(wide), arg2)
 		elif rnd == 4:
-			opnum = choice([BinopNum.REVSUB, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
+			opnum = choice([BinopNum.MOV_NEG, BinopNum.REVSUB, BinopNum.MOV_NEGC, BinopNum.REVSBC, BinopNum.AND_NOT, BinopNum.OR_NOT, BinopNum.XOR_NOT, BinopNum.MOV_NOT])
 			inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
 		elif rnd == 5:
 			inst = Mul(ArgReg(wide, randrange(2, 8) & (6 if wide else 7)), rand_arg_imm6(False))
