@@ -409,7 +409,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	wire [`OP_BITS-1:0] op = (branch || src1_from_pc) ? `OP_ADD : (use_rol || cmp ? `OP_SUB : (test ? `OP_AND : ((cls == CLASS_ALU) ? binop : `OP_MOV)));
 
 	// TODO: Is this the right conditions for updating flags? Should shifts update c, and v?
-	wire update_other_flags = (cls == CLASS_ALU /*|| cls == CLASS_SHIFT || cls == CLASS_INCDECZERO*/);
+	wire update_other_flags = (cls == CLASS_ALU) || use_alt_op;
 	wire update_carry_flags = ((cls == CLASS_ALU && (cmp || !binop[`OP_BIT_NADD])) /*|| cls == CLASS_SHIFT || cls == CLASS_INCDECZERO*/);
 
 	wire [`DEST_BITS-1:0] dest = ((branch || jump) && normal_stage) ? `DEST_PC : ((use_rotate || use_mul) ? `DEST_IMM8 : ( ((effective_d && (arg2_src == `SRC_MEM)) || push_pc_plus_n) ? `DEST_MEM : `DEST_REG ));

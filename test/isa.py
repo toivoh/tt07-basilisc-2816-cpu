@@ -616,7 +616,7 @@ class Binop(Instruction):
 		else: raise ValueError("Unsupported binop value: ", self.binop)
 
 		if not isinstance(self.arg1, ArgRegFlags):
-			if self.binop not in (BinopNum.MOV, BinopNum.MOV_NOT):
+			if self.binop != BinopNum.MOV:
 				state.flag_z = (result & bitmask(self.wide)) == 0
 				state.flag_s = ((result >> (8*(1+self.wide)-1)) & 1) != 0
 
