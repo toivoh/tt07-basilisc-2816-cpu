@@ -146,7 +146,7 @@ module regfile_top #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2 ) (
 	wire [NSHIFT-1:0] sp_top_scan_out = (bit_index[$clog2(REG_BITS/NSHIFT)-1:0] == 0) ? 2'd1 : '0;
 
 	// Flags register
-	wire flags_match = (reg_index_sr[1] == 1); // Matches on both 2 and 3
+	//wire flags_match = (reg_index_sr[1] == 1); // Matches on both 2 and 3
 	//assign write_flags = flags_match && sr_do_scan;
 	assign flags_data_scan_in = sr_scan_in;
 

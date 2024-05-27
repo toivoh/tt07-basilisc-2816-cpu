@@ -106,14 +106,9 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 	//localparam CLASS_INCDECZERO = 4;
 	localparam CLASS_MUL = 4;
 
-	localparam IDZ_ILLEGAL = 0;
-	localparam IDZ_ZERO    = 1;
-	localparam IDZ_INC     = 2;
-	localparam IDZ_DEC     = 3;
-
 	wire [3:0] cc = cccc;
-	wire use_imm6 = (mdz == 3'b101);
-	wire [1:0] idz_op = rr;
+	//wire use_imm6 = (mdz == 3'b101);
+	//wire [1:0] idz_op = rr;
 
 	wire push_pc_plus_n = pre_stage; // only thing that pre_stage is used for so far.
 
@@ -181,7 +176,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 //				0001omrrdziiiiii	2^12 r16: mov/shift/swap/inc/dec/zero
 			wide = aaa[2] == 0;
 			cls = CLASS_MOV; // may be overridden below
-			r = {rr, aaa[1] & !wide};
+			r = {rr, g & !wide};
 			//shift_op = imm6[5:3];
 			shift_op = {imm6[5:4], 1'b0}; // imm6[3:0] is used for shift count
 			//if (wide) shift_op[0] = m; // imm6[3] is needed as part of the the shift amount
@@ -295,7 +290,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		addr_src = 'X;
 		wide2 = wide;
 		src_sext2 = 0;
-		addr_op = `OP_ADD;
+		addr_op = `ADDR_OP_ADD;
 		autoincdec = 0;
 		autoincdec_dir = 'X;
 		autoincdec_update = 0;
@@ -311,7 +306,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 		end else if (use_zp && !push_pc_plus_n) begin
 			// zp
 			arg2_src = `SRC_MEM;
-			addr_op = `OP_MOV;
+			addr_op = `ADDR_OP_MOV;
 			addr_src = `SRC_IMM7;
 		end else if (mdz == 3'b101 && !push_pc_plus_n) begin
 			// (r, imm6)
@@ -364,7 +359,7 @@ module decoder #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 ) 
 					// [imm16]
 					arg2_src = `SRC_MEM;
 					addr_src = `SRC_IMM16;
-					addr_op = `OP_MOV;
+					addr_op = `ADDR_OP_MOV;
 				end else if (arg2_enc[2:1] == 2) begin
 					// [push/pop/sp]
 					arg2_src = `SRC_MEM;

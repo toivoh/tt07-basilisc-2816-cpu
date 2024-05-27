@@ -157,7 +157,7 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	always @(*) begin
 		if (do_mul) result = mul_result;
 		else case (operation)
-			OP_ADD, OP_SUB, OP_ADC, OP_SBC: result = sum;
+			OP_ADD, OP_SUB, OP_ADC, OP_SBC: result = sum[NSHIFT-1:0];
 			OP_AND: result = arg1_s & arg2_si;
 			OP_OR:  result = arg1_s | arg2_si;
 			OP_XOR: result = arg1_s ^ arg2_si;
@@ -277,10 +277,10 @@ module ALU #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, OP_BITS=`OP_BITS ) (
 	reg [MUL_SUM_BITS-1:0] term; // not a register
 	always @(*) begin
 		case(s_factor_code)
-			0: term = 0;
-			1: term = p_factor;
-			2: term = p_factor << 1;
-			3: term = ~p_factor; // Need to add 1 to the sum in this case, minus1 indicates
+			0: term = '0;
+			1: term = {{(NSHIFT+1){1'b0}}, p_factor};
+			2: term = {{(NSHIFT){1'b0}}, p_factor, 1'b0}; // p_factor << 1
+			3: term = ~{{(NSHIFT+1){1'b0}}, p_factor}; // Need to add 1 to the sum in this case, minus1 indicates
 		endcase
 	end
 
