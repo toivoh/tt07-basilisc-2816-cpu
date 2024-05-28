@@ -252,7 +252,9 @@ module scheduler #( parameter LOG2_NR=4, REG_BITS=8, NSHIFT=2, PAYLOAD_CYCLES=8 
 	assign block_prefetch = (execute && access_pc) || (inst_valid && (dest == `DEST_PC) && any_prefetched);
 	assign write_pc_now   = execute && write_pc && prefetch_idle;
 
-	assign reserve_tx     = execute && will_write && !do_swap; // Swaps never wait to start a transaction after initial access, so don't need to reserve
+	// Swaps never wait to start a transaction after initial access, so don't need to reserve.
+	// No reservation is needed after the data stage.
+	assign reserve_tx     = execute && will_write && !do_swap && !_any_rotate_stage;
 
 	// tx_reply_wanted should be constant between the address and data stages so that the data stage knows if it should wait for data.
 	// !((dest == `DEST_MEM) && (op == `OP_MOV)) should detect a mov [addr], reg,
