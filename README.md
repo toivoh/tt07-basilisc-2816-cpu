@@ -2,6 +2,8 @@
 
 Basilisc-2816: Small 2-bit serial 8/16 bit CPU for Tiny Tapeout 7
 =================================================================
+![](docs/combined.svg)
+
 Basilisc-2816 v0.1 is a small 2-bit serial 2/8/16 bit processor that fits into one Tiny Tapeout tile.
 It has been designed around the constraints of
 
