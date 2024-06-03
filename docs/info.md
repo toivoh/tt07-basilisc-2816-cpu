@@ -79,6 +79,7 @@ It is unknown how the use of latches will affect max clock frequency (and correc
 Reducing the memory access latency may be more important to performance than using a high clock frequency.
 
 The three variants are availble at
+
 - v0.1a: https://github.com/toivoh/tt07-basilisc-2816-cpu
 - v0.1b: https://github.com/toivoh/tt07-basilisc-2816-cpu-OL2
 - v0.1c: https://github.com/toivoh/tt07-basilisc-2816-cpu-experimental
@@ -129,6 +130,7 @@ The 2-bit serial interface in turn shapes the design of the rest of the processo
 ### Registers
 
 The CPU has the following registers:
+
 - 8 general purpose 8 bit registers `a - h`,
 	- also available as four general purpose 16 bit register pairs `ba / dc / fe / hg`.
 - 16 bit program counter `pc`, keeping the adress of the current instruction.
@@ -150,6 +152,7 @@ The `branch / jump / call / ret` instructions are always 16 bit; all others have
 Generally, 8 bit instructions operate on 8 bit registers while 16 bit instructions operate on register pairs.
 
 In the instruction descriptions below,
+
 - `reg` is a general purpose register (pair) operand to an 8 (16) bit instruction.
 - `dest/src` can be a general purpose register (/pair), a memory location, an immediate value (for `src`), among other things (see addressing modes below).
 - `imm4/imm6/imm8` is a 4/6/8 bit immediate value, usually sign extended.
@@ -488,6 +491,7 @@ When `dest/src` is used in an instruction, it is encoded into the `imm6/dest/src
 	000111   sp
 
 where
+
 - `RR` encodes `r16`,
 - `rrr` encodes `r8`, and
 - `ii` encodes `imm2`.
@@ -711,6 +715,7 @@ The experimental v0.1c version of the CPU uses latches instead of flip flops in 
 This saves space, but is a bit more tricky to work with. Hopefully, it works as intended.
 
 To try to make the latches behave as desired, the design
+
 - avoids glitches on the gate input of each latch by feeding it directly from a flip flop, and
 - makes sure that the input data to each latch stays stable one cycle after the gate was closed.
 
@@ -786,11 +791,13 @@ Some complications arise since
 For the 16 bit case, both register file ports are connected together to form a 16 bit shift register.
 
 To work witin the restrictions:
+
 - Odd shift amounts are handled by the ror1 stage, which needs 5/9 cycles to rotate an 8/16 bit value right one step by rotating it right 5/9 cycles in steps of 2 bits, through a 1 bit delay.
 - `sar` records the sign bit at the end of the ror1 stage.
 - Left shifts and rotates are implemented using right rotation with `8 - shift_count` or `16 - shift_count` number of steps.
 
 Also:
+
 - `shr` and `sar` instructions replace the topmost bits with zeros/the sign during the final rotate stage (and the final ror1 cycle, for odd shifts).
 - `shl` replaces bits with zeros during the `ror1` stage - the bit positions to be cleared are exactly those that will not be rotated through the lsbs during the final rotate stage.
 - The shift count for `rol` / `shl` is negated while loading it into the immediate register during the data stage.
@@ -826,6 +833,7 @@ Multiplication by 0 and 1 are easy, and multiplication by 2 is just a left shift
 Instead, the multiplier multiplies by -1. This produces the same result for the lowest 2 bits. At the same time, it sets a carry to add one to the incoming 2 bit value during the next cycle. This results in the need to multiply by a number between 0 and 4, but 4 can be handled in a similar way 3, in this case: multiply by zero, set a carry for the next step.
 
 In total, the multiplier requires
+
 - 9 bits of scratch space for the partial sum (the `partial` register and a sign bit, reusing the ALUs temporary sign bit (not the sign flag)),
 - an 11 bit adder,
 - a one step shifter, and provisions to multiply the factor by zero or invert its bits.
