@@ -394,15 +394,6 @@ where
 
 The `mdz` bits are used togther with the major form to choose instruction form:
 
-<!--
-	mdz      100     101         110     111         00x      01x
-	operands (r, s)  (r, imm6)   (d, r)  (d, r)      (r, zp)  (zp, r)
-
-	a/A      <-------- binop -------- >  shift r, s  <---- binop -- >
-	m0/M0    <-------- mov reg, imm8 ------------ >  mul/jumps   swap
-	m1/M1    mov     shift       mov     swap        <--- mov ----- >
--->
-
 ![](instruction-forms.png)
 
 where
