@@ -7,8 +7,9 @@ You can also include images in this folder and reference them in the markdown. E
 512 kb in size, and the combined size of all images must be less than 1 MB.
 -->
 
-## Overview
 ![](combined.png)
+
+## Overview
 
 Basilisc-2816 v0.1 is a small 2-bit serial 2/8/16 bit processor that fits into one Tiny Tapeout tile.
 It has been designed around the constraints of
@@ -35,7 +36,8 @@ Features:
 - Instructions:
 	- `mov`, `swap`
 	- `binop`: `add/adc/sub/sbc/and/or/xor/cmp/test`
-		- for register-to-register also: `neg/negc/revsub/revsbc/and_not/or_not/xor_not/not`,
+		- for register-to-register also: `neg/negc/revsub/revsbc/and_not/`
+		  `or_not/xor_not/not`,
 	- `shl/shr/sar/rol/ror` with variable or immediate shift count,
 	- `mul`: 8x8 and 8x16 bit multiply instructions, producing 2 result bits per cycle like everything else,
 	- `branch cc, offset`: relative branch
@@ -123,10 +125,11 @@ The two remaining output pins give additional information about the current TX m
 
 The RAM emulator does not need to use these pin values to operate correctly, but they give additional information about what the CPU is doing. They are used by the gate level test.
 
-The 2-bit serial RAM interface is motivated by AnemoneSynth in https://github.com/toivoh/tt06-retro-console, which needs to be able to read and write 2 bits/cycle to and from memory for fast enough context switching between voices.
+The 2-bit serial RAM interface is motivated by the AnemoneSynth synth in https://github.com/toivoh/tt06-retro-console, which needs to be able to read and write 2 bits/cycle to and from memory for fast enough context switching between voices.
 The 2-bit serial interface in turn shapes the design of the rest of the processor.
 
 ## Programmer's view
+
 ### Registers
 
 The CPU has the following registers:
@@ -147,6 +150,7 @@ At reset, the `pc` register starts at `0xfffc`, which is just enough to fit a `j
 All other registers are uninitialized at reset.
 
 ### Instructions
+
 Most instructions operate on one general purpose register and one additional operand, which can be, e g, a register, memory, or an immediate value.
 The `branch / jump / call / ret` instructions are always 16 bit; all others have corresponding 8/16 bit forms.
 Generally, 8 bit instructions operate on 8 bit registers while 16 bit instructions operate on register pairs.
@@ -161,6 +165,7 @@ In the instruction descriptions below,
 The following types of instructions are supported:
 
 #### `mov dest, src`
+
 Copy value from `src` to `dest`. Supported forms:
 
 	mov reg, src
@@ -170,12 +175,14 @@ Copy value from `src` to `dest`. Supported forms:
 	mov [zp], reg
 
 #### `swap dest, reg`
+
 Swap the value of `dest` and `reg`. Supported forms:
 
 	swap dest, reg
 	swap [zp], reg
 
 #### `binop dest, src`
+
 Perform a binary operation on `dest` and `src`, write the result to `dest`, and update `flags` to reflect the result.
 
 For the binary operations
@@ -236,6 +243,7 @@ The `v` flag is set calculated so that signed and unsigned comparisons using `cm
 All binary operations update the `s, z` flags.
 
 #### `shift reg, src8`
+
 Perform a shift operation on `reg` using shift count from `src`.
 The shift operation can be
 
@@ -255,6 +263,7 @@ The `src8` argument is always taken to be 8 bit even for 16 bit shifts.
 `shr` and `sar` use the bottom 4 bits also for 8 bit shifts, while the others use the bottom 3 bits. (Timing wise, right shifts use the bottom 4 bits and left shifts use the bottom 3 bits for 8 bit shifts).
 
 #### `mul reg, src`
+
 Unsigned multiply of 8/16 bit `reg` and 8 bit `src`, producing a 16/24 bit result.
 Store the bottom part of the result in `reg`, and store the top 8 bits in `h`, unless `reg` is `h` or `hg`. (Instruction takes 4 cycles less to execute if top 8 bits are not stored).
 Supported forms:
@@ -265,6 +274,7 @@ Supported forms:
 `reg` can not be `a`, `b`, or `ba`.
 
 #### `branch cc, imm8`
+
 Relative conditional branch: if the specified condition is true, jump `imm8` instruction words ahead of the current instruction. `imm8` is signed.
 `branch cc, 0` jumps to itself. The encoding for `branch always, 0` is 0, so if the processor encounters a zero instruction word, it enters an infinite loop.
 (This might be explicitly designated as an illegal instruction in future versions.)
@@ -293,6 +303,7 @@ Supported conditions:
 	ng / le       // not greater / less
 
 #### `jump src16`, `call src16`, `ret`
+
 `jump src16` performs an absolute unconditional jump to `pc = src16`.
 
 Supported forms:
@@ -360,7 +371,8 @@ Some instructions can use a `[zp]` operand, indicating a 7 bit memory adress `[i
 For 16 bit operands, `[2*imm7]` is used instead, which can reach the first 256 bytes in the address space, as aligned 16 bit words.
 
 ### Instruction encoding
-Each instruction is encoded into one of five major forms `a / A / b / B / M`:
+
+Each instruction is encoded into one of five major forms `a / A / b / B / M)`:
 <!--
 	bit position
 	111111
@@ -390,6 +402,7 @@ The `mdz` bits are used togther with the major form to choose instruction form:
 	m0/M0    <-------- mov reg, imm8 ------------ >  mul/jumps   swap
 	m1/M1    mov     shift       mov     swap        <--- mov ----- >
 -->
+
 ![](instruction-forms.png)
 
 where
@@ -501,7 +514,7 @@ where
 The `d` bit chooses between `sext(r8)` (`d=0`) and `zext(r8)` (`d=1`), except that the `test` instruction uses `sext(r8)` even though it is encoded with `d=1`.
 For the `imm16` and `[imm16]` cases, the `imm16` value follows the instruction word. For 8 bit instructions, `imm16` still takes 16 bits, but only the lower 8 bits are used by the instruction.
 
-### Execution timing
+## Execution timing
 
 The that it takes to execute differemt instructions is influenced by 4 main factors:
 
@@ -518,7 +531,7 @@ In the processor, the memory interface is shared between
 
 If the TX channel is idle and both try to start a new message TX message at the same time, the scheduler has priority.
 
-#### Instruction stages
+### Instruction stages
 
 The scheduler divides the execution of a given instruction into a subset of the following stages:
 
@@ -570,7 +583,7 @@ The rotate stage is used by all shifts except when the shift count is zero. It r
 The mul1 stage is used by all `mul` instructions. It calculates the bottom part of the product (the part that is stored into the first operand), and takes 4/8 cycles for 8/16 bit operands.
 The mul2 stage is used to write the top 8 bits of the product to the `h` register. It takes 4 cycles, but the instruction is finished after the mul1 stage if the `h` register overlaps with the destination.
 
-#### The prefetcher
+### The prefetcher
 
 The objective of the prefetcher is to try to keep the decoder and scheduler fed with instruction words, even though it might take some time between the point when a read request is sent and the read response data is received.
 The prefetcher has a prefetch queue of 2 - 4 instruction words (see Basilisc-2816 v0.1 variants above).
@@ -585,7 +598,7 @@ When a read response for a prefetch arrives, the instruction word is stored in t
 The whole instruction word must arrive into the first buffer before it is considered valid.
 Even if the other prefetch queue buffers are empty, it takes on cycle for an instruction word to traverse each one.
 
-#### Jumps
+### Jumps
 
 Whenever a jump is taken, the current contents of the prefetch queue are flushed, meaning that they will not be used (including responses to read requests that have already been sent, but where the response has not yet arrived).
 
@@ -593,12 +606,13 @@ Jumps update the `pc` register during the data stage. At the same time, they sen
 
 Calls (whether relative or absolute) are special in that they are scheduled like two instructions in sequence: `push pc+2 / push pc+4` followed by the corresponding `jump` instruction.
 
-#### Performance considerations
+### Performance considerations
 
 Performance characteristics of different types of instructions:
 
 - Instructions that operate on only registers and immediates are generally fast, don't need to wait for memory access, and allow the prefetcher to work in parallel.
-	- 8/16 bit `mov/swap/binop` with only register (including `sp/p/flags/sext(r8)/zext(r8)`) and immediate operands generally take 4/8 cycles.
+	- 8/16 bit `mov/swap/binop` with only register (including `sp/p/flags/`
+	`sext(r8)/zext(r8)`) and immediate operands generally take 4/8 cycles.
 	- `shift` and `mul` instructions usually take more cycles (see above), but still allow the prefetcher to work in parallel, except for in the address stage (if any).
 		- `shift` and `mul` instructions with immediate second operand are faster since they don't need to spend time on loading the shift count/factor.
 		- For `shift` instructions, the ror1 stage can be skipped under certain circumstances, and the length of the rotate stage depends on the shift count: small right shifts / big left shifts are faster (see above).
