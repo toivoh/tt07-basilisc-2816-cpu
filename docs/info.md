@@ -598,13 +598,15 @@ Performance characteristics of different types of instructions:
 The things to be most careful about performance wise are probably read-modify-write instructions and jumps. On the other hand, read-modify-write instructions can help relieve register pressure, and jumps are often necessary and sometimes save more time than they cost.
 
 ## How it works
-
+<!---
 	memory    <-> memory  <-> scheduler <-> ALU <-> register
 	interface     arbiter         ^                 file
 	                 ^            |
 	                 |            |
 	                 V            V
 	            prefetcher <-> decoder
+-->
+![](architecture.png)
 
 The CPU consists of a number of parts:
 
