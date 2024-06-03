@@ -358,7 +358,7 @@ For 16 bit operands, `[2*imm7]` is used instead, which can reach the first 256 b
 
 ### Instruction encoding
 Each instruction is encoded into one of five major forms `a / A / b / B / M`:
-
+<!--
 	bit position
 	111111
 	5432109876543210
@@ -367,71 +367,78 @@ Each instruction is encoded into one of five major forms `a / A / b / B / M`:
 	001gomrrdziiiiii    m: 8 bit others (including shift)
 	0001omrrdziiiiii    M: 16 bit others (including shift)
 	0000ccccbbbbbbbb    B: branch
+-->
+
+![](major-forms.png)
 
 where
 
-- `a/A` forms are mostly used for 8/16 bit binops,
-- `m/M` forms are used for 8/16 bit moves and other things, and
-- `B` form is used for branches.
+- `a/A)` forms are mostly used for 8/16 bit binops,
+- `m/M)` forms are used for 8/16 bit moves and other things, and
+- `B)` form is used for branches.
 
-The `mdz` bits are used togther with the major form to choose instruction:
+The `mdz` bits are used togther with the major form to choose instruction form:
 
+<!--
 	mdz      100     101         110     111         00x      01x
 	operands (r, s)  (r, imm6)   (d, r)  (d, r)      (r, zp)  (zp, r)
 
-	a/A      <-------- binop --------->  shift r, s  <---- binop --->
-	m0/M0    <-------- mov reg, imm8 ------------->  mul/jumps   swap
-	m1/M1    mov     shift       mov     swap        <--- mov ------>
+	a/A      <-------- binop -------- >  shift r, s  <---- binop -- >
+	m0/M0    <-------- mov reg, imm8 ------------ >  mul/jumps   swap
+	m1/M1    mov     shift       mov     swap        <--- mov ----- >
+-->
+![](instruction-forms.png)
 
 where
 
-- The form of the instruction is decided by the `mdz` value, except for the cases `mov reg, imm8`, `shift r, s` (`= shift reg, src8`), and `mul/jumps`.
+- The form of the instruction's operands is decided by the `mdz` value, except for the cases `mov reg, imm8`, `shift reg, src8`, and `mul/jump/call`.
 - The `o` bit chooses between the `m0/M0` (`o = 0`) and `m1/M1` (`o = 1`) columns.
-- `A` and `M` form instructions are 16 bit while `a` and `m` form instructions are 8 bit, except for `jumps` which are all 16 bit.
+- `A)` and `M)` form instructions are 16 bit while `a)` and `m)` form instructions are 8 bit, except for `jump/call` which are all 16 bit.
 
-Most instructions encode one general purpose register in `rr/rre/rrg`, and a source/destination in `iiiiii`.
-The interpretation of the `iiiiii` bits depends on the form of the instruction, as does whether it is a source or a destination.
+Most instructions encode one general purpose register in `r2r1/r2r1r0`, and a source/destination in `imm6`.
+The interpretation of the `imm6/dest/src` bits depend on the form of the instruction, including whether it is a source or a destination.
+Zero page instructions use the `z` bit to extend the `imm6` field to a 7 bit immediate address,
+and `mov reg. imm8` instructions use the `dz` bits to extend it to an 8 bit immediate.
 
-The registers `a - h` are represented with the numbers 0 - 7; `ba - hg` with the numbers 0 - 3.
-For `A/M` form instructions, `reg` encoded in `rr`.
-For `a` form instructions, `reg` is encoded in `rre`, while for `m` instructions, it is encoded in `rrg`.
+The registers `a - h` are represented with the numbers 0 - 7; `ba - hg` with the numbers 0 - 3 (stored in a 2 bit field such as `r2r1`).
+For `A/M)` form instructions, `reg` encoded in `r2r1`.
+For `a/m)` form instructions, `reg` encoded in `r2r1r0`, but the `r0` bit is stored in different places in `a)` and `m)` form instructions.
 
-The `aaa` field in the `a/A` forms sets which binary operation to use:
+The `binop` field in the `a/A)` forms selects which binary operation to use:
 
-	aaa   binop      alternate
-
-	  0   add        neg
-	  1   sub        revsub
-	  2   adc        negc
-	  3   sbc        revsbc
-	  4   and        and_not
-	  5   or         or_not
-	  6   xor        xor_not
-	  7   cmp/test   
+	binop   operation   alternate
+	    0   add         neg
+	    1   sub         revsub
+	    2   adc         negc
+	    3   sbc         revsbc
+	    4   and         and_not
+	    5   or          or_not
+	    6   xor         xor_not
+	    7   cmp/test    
 
 The alternate form is used in for `binop` instructions with `mdz = 110` and two register operands (use `mdz = 100` for the regular form).
 In the same way, `not` is the alternate form of `mov`, and is used under the same circumstances.
 `sub reg, imm6` is replaced by `revsub reg, imm6` (use `add reg, -imm6` for `sub reg, imm6`).
 `cmp` is replaced by `test` when `d=1`, but the form is kept as `cmp reg, src`.
 
-The `aaa` field is also used to specify the shift operation in `shift reg, src8`:
+The `binop` field is also used to specify the shift operation in `shift reg, src8`:
 
-	aaa   shift operation
+	binop   shift operation
 
-	  0   ror
-	  2   sar
-	  4   shr
-	  6   shl
-	  7   rol
+	    0   ror
+	    2   sar
+	    4   shr
+	    6   shl
+	    7   rol
 
-For `shift reg, imm4`, the top two bits of `aaa` are stored in the top two bits of `iiiiii`, while the bottom 4 bits store the shift count.
+For `shift reg, imm4`, the top two bits of `binop` are stored in the top two bits of `imm6` (the bottom bit is implicitly zero), while the bottom 4 bits store the shift count.
 `rol reg, imm4` should be encoded as
 
 	ror reg, 16 - imm4       // for 16 bit reg
 	ror reg, (8 - imm4) & 7  // for  8 bit reg
 
-Multiplication instructions are encoded in the `mul/jumps` case with `rr != 0` (which excludes the use of `a/b/ba` for the `reg` operand).
-When `rr = 0`, absolute jumps and calls are encoded instead:
+Multiplication instructions are encoded in the `mul/jump/call` case with `r2r1 != 0` (which excludes the use of `a/b/ba` for the `reg` operand).
+When `r2r1 = 0`, absolute jumps and calls are encoded instead:
 
 	111111
 	5432109876543210
@@ -439,9 +446,10 @@ When `rr = 0`, absolute jumps and calls are encoded instead:
 	0010000001iiiiii	call src16
 	000100000ziiiiii	jump [zp]
 
-For branches, `bbbbbbbb` is the `imm8` offset, while `cccc` selects the branch condition according to
+For branches, `offset` is the `imm8` offset, which is sign extended and multiplied by 2 and added to the address of the branch instruction to get the target `pc` value.
+The `cond` field selects the branch condition according to
 
-	cccc   branch condition
+	cond   branch condition
 
 	   0   always
 	   1   call          // like always, but push address
@@ -462,8 +470,9 @@ For branches, `bbbbbbbb` is the `imm8` offset, while `cccc` selects the branch c
 	  14   g / nle       // greater / not less
 	  15   ng / le       // not greater / less
 
-When `dest/src` is used in an instruction, it is encoded into `iiiiii` according to
+When `dest/src` is used in an instruction, it is encoded into the `imm6/dest/src` field according to
 
+<!---
 	543210
 	1RRrrr   [r16 + r8]          RR != rrr[2:1]
 	1RRrr0   [r16++]             rr = RR
@@ -482,8 +491,10 @@ where
 - `RR` encodes `r16`,
 - `rrr` encodes `r8`, and
 - `ii` encodes `imm2`.
+-->
+![](dest-src-encoding.png)
 
-The `d` bit chooses between `sext(r8)` (`d=0`) and `zext(r8)` (`d=1`), except that `test` uses `sext(r8)` even though it is encoded with `d=1`.
+The `d` bit chooses between `sext(r8)` (`d=0`) and `zext(r8)` (`d=1`), except that the `test` instruction uses `sext(r8)` even though it is encoded with `d=1`.
 For the `imm16` and `[imm16]` cases, the `imm16` value follows the instruction word. For 8 bit instructions, `imm16` still takes 16 bits, but only the lower 8 bits are used by the instruction.
 
 ### Execution timing
