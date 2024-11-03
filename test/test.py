@@ -440,6 +440,7 @@ async def test_cpu(dut):
 			inst = Binop(opnum, rand_arg_reg(wide), rand_arg_reg(wide))
 		elif mul_supported and rnd == 5:
 			inst = Mul(ArgReg(wide, randrange(2, 8) & (6 if wide else 7)), rand_arg_imm6(False))
+			# TODO: test mul with rand_arg(d_symmetry=False, zp_ok=False)
 		else:
 			opnum = choice([BinopNum.ADD, BinopNum.SUB, BinopNum.ADC, BinopNum.SBC, BinopNum.AND, BinopNum.OR, BinopNum.XOR, BinopNum.CMP, BinopNum.TEST, BinopNum.MOV])
 			no_d = opnum in (BinopNum.CMP, BinopNum.TEST)
