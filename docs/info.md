@@ -15,11 +15,12 @@ Basilisc-2816 v0.1 is a small 2-bit serial 2/8/16 bit processor that fits into o
 It has been designed around the constraints of
 
 - small area,
-- 4 pin serial memory interface to a RAM emulator implemented in an RP2040 microcontroller (which can be supported by the RP2040 microcontroller on the Tiny Tapeout 7 Demo Board),
+- 2-bit serial memory interface (2 pins in either direction) to a RAM emulator implemented in an RP2040 microcontroller (which can be supported by the RP2040 microcontroller on the Tiny Tapeout 7 Demo Board),
 - to be suitable to be included in in the next version of the AnemoneGrafx-8 retro console https://github.com/toivoh/tt06-retro-console, which motivates the other constraints.
 
 Features:
 
+- Custom instruction set adapted to the design constraints
 - 2-bit serial execution:
 	- ALU results etc are calculated at 2 bits/cycle
 	- 2-bit-serial register file with two read/write ports
@@ -27,12 +28,12 @@ Features:
 		- The processor starts to operate on each bit of incoming read data as it arrives
 	- Saves area compared to processing 8/16 bits per cycle / using a parallel access register file
 	- No point in calculating faster than the memory interface allows
-- 8x 8-bit general purpose registers that can be paired into 4x 16-bit general purpose registers, plus an 8 bit stack register
+- 8x 8-bit general purpose registers that can be paired into 4x 16-bit general purpose registers, plus an 8 bit stack pointer register
 - 8 bit and 16 bit versions of almost all instructions
 - 64 kB address space
 - 16 bits/instruction
 - Quite regular and orthogonal instruction encoding, most instructions can use most addressing modes
-	- `op reg, src` and `op src, reg` instruction forms
+	- `op reg, src` and `op dest, reg` instruction forms
 - Instructions:
 	- `mov`, `swap`
 	- `binop`: `add/adc/sub/sbc/and/or/xor/cmp/test`
@@ -42,7 +43,7 @@ Features:
 	- `mul`: 8x8 and 8x16 bit multiply instructions, producing 2 result bits per cycle like everything else,
 	- `branch cc, offset`: relative branch
 		- unconditional/call/12 conditions including signed/unsigned comparisons,
-	- `jump/call`: absolut direct/indirect jump/call,
+	- `jump/call`: absolute direct/indirect jump/call,
 	- additional functionality through combination with addressing modes, e g, `ret = jump [pop]`
 - Addressing modes:
 	- `[imm7]` / `[imm7*2]`: zero page
@@ -313,7 +314,7 @@ Supported forms:
 
 	call src16
 
-`call` is like `jump`, but pushes address of the next instruction before jumping.
+`call` is like `jump`, but pushes the address of the next instruction before jumping.
 It can be used for calling a subroutine.
 
 `ret` is a pseudoinstruction for `jump [pop]`, which pops a `pc` value from the stack and jumps to it.
@@ -354,7 +355,7 @@ For instructions that use a `dest` operand, `dest` can be one of
 	[sp]              // Top of stack. Only for operations that depend
 	                     on the value of dest.
 
-For instructions that use a `src` operand, `src` can be anything that `dest` can be except `[pop], [sp]`, and can also be
+For instructions that use a `src` operand, `src` can be anything that `dest` can be except `[push]` and `[sp]`, and can also be
 
 	sext(r8)        // Sign extend r8, only for 16 bit operations.
 	zext(r8)        // Zero extend r8, only for 16 bit operations,
@@ -405,11 +406,11 @@ where
 Most instructions encode one general purpose register in `r2r1/r2r1r0`, and a source/destination in `imm6`.
 The interpretation of the `imm6/dest/src` bits depend on the form of the instruction, including whether it is a source or a destination.
 Zero page instructions use the `z` bit to extend the `imm6` field to a 7 bit immediate address,
-and `mov reg. imm8` instructions use the `dz` bits to extend it to an 8 bit immediate.
+and `mov reg, imm8` instructions use the `dz` bits to extend it to an 8 bit immediate.
 
 The registers `a - h` are represented with the numbers 0 - 7; `ba - hg` with the numbers 0 - 3 (stored in a 2 bit field such as `r2r1`).
-For `A/M)` form instructions, `reg` encoded in `r2r1`.
-For `a/m)` form instructions, `reg` encoded in `r2r1r0`, but the `r0` bit is stored in different places in `a)` and `m)` form instructions.
+For `A/M)` form instructions, `reg` is encoded in `r2r1`.
+For `a/m)` form instructions, `reg` is encoded in `r2r1r0`, but the `r0` bit is stored in different places in `a)` and `m)` form instructions.
 
 The `binop` field in the `a/A)` forms selects which binary operation to use:
 
@@ -445,6 +446,7 @@ For `shift reg, imm4`, the top two bits of `binop` are stored in the top two bit
 	ror reg, (8 - imm4) & 7  // for  8 bit reg
 
 Multiplication instructions are encoded in the `mul/jump/call` case with `r2r1 != 0` (which excludes the use of `a/b/ba` for the `reg` operand).
+`mul reg, imm6` is encoded with `z=0`, while `mul reg, src8` is encoded with `z=1`.
 When `r2r1 = 0`, absolute jumps and calls are encoded instead:
 
 	111111
@@ -507,7 +509,7 @@ For the `imm16` and `[imm16]` cases, the `imm16` value follows the instruction w
 
 ## Execution timing
 
-The that it takes to execute differemt instructions is influenced by 4 main factors:
+The time that it takes to execute different instructions depends on 4 main factors:
 
 - the number of execution cycles needed for a given instruction,
 - cycles needed to wait for access to the TX channel, for instructions that send read/write requests to memory,
@@ -611,9 +613,9 @@ Performance characteristics of different types of instructions:
 - `mov mem, reg` instructions need to send a read request and a write request, but don't need to wait for a response.
 - `swap mem, reg` instructions need to send a read request and a write request, and wait for the read response, but allow the prefetcher to run while waiting.
 - Read-modify-write instructions `binop mem, reg` need to send a read request and a write request, and block the prefetcher while waiting for the read response.
-- (Taken) jumps flush the prefetch queue, causing execution to stall until new instructions can arrive at the decoder.
+- Taken jumps/branches flush the prefetch queue, causing execution to stall until new instructions can arrive at the decoder.
 - `imm16` / `[imm16]` operands require an extra instruction word to be prefetched (and require one additional cycle to load).
-  They still allow the data to be prefetched, unlike with reads initiated by the instruction.
+  They still allow that `imm16` data to be prefetched, unlike with reads initiated by the instruction.
 
 The things to be most careful about performance wise are probably read-modify-write instructions and jumps. On the other hand, read-modify-write instructions can help relieve register pressure, and jumps are often necessary and sometimes save more time than they cost.
 
@@ -655,13 +657,13 @@ The CPU consists of a number of parts:
 	- reads external inputs and produces an external result when needed, and
 	- reads and updates the register file.
 - The _register file_
-	- holds most of the CPUs registers: general purpose registers `a-h` and `sp`, and
+	- holds most of the CPU's registers: general purpose registers `a-h` and `sp`, and
 	- mediates access to the flags as the `flags` register.
 
 ### 2-Bit serial operation
 
 The CPU uses 2-bit-serial operation wherever it can. This means that instead of operating on all bits of a value in parallel, it operates on 2 bits per cycle.
-Since the memory interface can only send/reveive 2 bits/cycle, there is little point in making most other things operate faster. Serial operation saves area compared to parallel operation for both computions and registers.
+Since the memory interface can only send/receive 2 bits/cycle, there is little point in making most other things operate faster. Serial operation saves area compared to parallel operation for both computions and registers.
 
 Consider adding two values that are stored in separate registers. Addition starts from the least significant 2 bits (lsbs), and proceeds upwards, 2 bits/cycle. To facilitate this, the registers are organized as shift registers, which can be right-shifted two bits per cycle, feeding out the 2 bottom bits. At the same time, two new bits are fed into the top.
 

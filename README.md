@@ -8,7 +8,7 @@ Basilisc-2816 v0.1 is a small 2-bit serial 2/8/16 bit processor that fits into o
 It has been designed around the constraints of
 
 - small area,
-- 4 pin serial memory interface to a RAM emulator implemented in an RP2040 microcontroller (which can be supported by the RP2040 microcontroller on the Tiny Tapeout 7 Demo Board),
+- 2-bit serial memory interface (2 pins in either direction) to a RAM emulator implemented in an RP2040 microcontroller (which can be supported by the RP2040 microcontroller on the Tiny Tapeout 7 Demo Board),
 - to be suitable to be included in in the next version of the AnemoneGrafx-8 retro console https://github.com/toivoh/tt06-retro-console, which motivates the other constraints.
 
 Features:
